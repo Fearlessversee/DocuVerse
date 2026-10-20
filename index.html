@@ -96,6 +96,7 @@
       <section class="document-toolbar" aria-label="Document actions">
         <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="read-time">Reading time —</span><span class="meta-dot">·</span><span id="word-count">— words</span></div>
         <div class="toolbar-actions">
+          <button class="secondary-button" id="open-local-button" title="Open any .md file from phone or computer storage"><span>📁</span> Open Local .md</button>
           <button class="secondary-button" id="badge-button" title="Get 1-click badge & banner for your GitHub README"><span>⚡</span> Get README Badge</button>
           <button class="secondary-button" id="download-button" title="Download Markdown file"><span>↓</span> Download .md</button>
           <button class="primary-button" id="copy-link-button" title="Share document link"><span>↗</span> Share document</button>
@@ -120,22 +121,32 @@
   <div class="mobile-scrim" id="mobile-scrim"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Open Document by URL Modal -->
+  <!-- Open Document by URL or Local File Modal -->
   <div class="open-modal" id="open-modal" hidden role="dialog" aria-modal="true" aria-label="Open Markdown Document">
     <div class="open-modal-backdrop" id="open-modal-backdrop"></div>
     <div class="open-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
           <span class="open-modal-icon">✦</span>
-          <strong>Open Markdown by URL</strong>
+          <strong>Open Markdown Document</strong>
         </div>
         <button class="diagram-ctrl-btn modal-close-btn" id="open-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body">
+        <div class="local-file-section">
+          <input type="file" id="local-file-picker" accept=".md,.markdown,.mdown,.txt" style="display:none">
+          <button type="button" class="primary-button local-file-btn" id="choose-local-file-btn">
+            <span>📁</span> Choose .md File from Phone or Computer
+          </button>
+          <p class="offline-badge-text">⚡ <strong>100% Offline & Private</strong> — File is rendered client-side in memory and never uploaded to any server.</p>
+        </div>
+
+        <div class="section-divider"><span>OR LOAD BY URL</span></div>
+
         <p class="tab-description">Enter any public GitHub Markdown link or raw Markdown URL to view it interactively:</p>
         <div class="url-input-group">
           <input type="url" id="custom-url-input" placeholder="e.g. https://github.com/virajverse/DocuVerse/blob/main/README.md" autocomplete="off">
-          <button type="button" class="primary-button" id="load-url-btn">Load & View</button>
+          <button type="button" class="secondary-button" id="load-url-btn">Load & View</button>
         </div>
         <div class="quick-examples">
           <span class="examples-label">Quick samples:</span>

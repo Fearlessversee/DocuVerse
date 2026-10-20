@@ -101,9 +101,15 @@
       link.href = `#${id}`;
       link.textContent = h.textContent;
 
-      link.addEventListener("click", () => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
         nav.querySelectorAll(".toc-link").forEach(a => a.classList.remove("active"));
         link.classList.add("active");
+        const target = document.getElementById(id);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          history.pushState(null, "", `#${id}`);
+        }
       });
       nav.append(link);
     });
@@ -792,6 +798,39 @@
       });
     }
 
+    // Local File Selection (100% Offline via FileReader)
+    const localFilePicker = $("local-file-picker");
+    const chooseLocalBtn = $("choose-local-file-btn");
+    const openLocalBtnToolbar = $("open-local-button");
+
+    const triggerFilePicker = () => {
+      if (localFilePicker) localFilePicker.click();
+    };
+
+    if (chooseLocalBtn) chooseLocalBtn.addEventListener("click", triggerFilePicker);
+    if (openLocalBtnToolbar) openLocalBtnToolbar.addEventListener("click", triggerFilePicker);
+
+    if (localFilePicker) {
+      localFilePicker.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const text = event.target.result;
+          hideModal();
+          history.pushState({}, "", window.location.pathname);
+          const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+          await renderCustomMarkdown(text, cleanTitle, file.name);
+          toast(`Loaded: ${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`);
+        };
+        reader.onerror = () => {
+          toast("Failed to read local file.");
+        };
+        reader.readAsText(file);
+        localFilePicker.value = "";
+      });
+    }
+
     // Sample Chips
     document.querySelectorAll(".sample-chip").forEach(chip => {
       chip.addEventListener("click", async () => {
@@ -1017,7 +1056,12 @@
   window.addEventListener("scroll", updateProgress, { passive: true });
   window.addEventListener("resize", updateProgress);
   window.addEventListener("popstate", () => routeAndLoad());
-  window.addEventListener("hashchange", () => routeAndLoad());
+  window.addEventListener("hashchange", () => {
+    const hash = window.location.hash;
+    if (hash && (hash.startsWith("#data=") || hash.startsWith("#md="))) {
+      routeAndLoad();
+    }
+  });
 
   window.addEventListener("DOMContentLoaded", async () => {
     enforceLightTheme();
