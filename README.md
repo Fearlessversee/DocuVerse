@@ -31,7 +31,51 @@
 
 ---
 
+## 🌐 View Any Markdown Instantly (Universal Viewer)
+
+DocuVerse is not just a showcase — it's a **universal viewer for any Markdown document or PRD on the web**:
+
+```mermaid
+flowchart LR
+    GH[Any GitHub Markdown URL] --> DV[DocuVerse Engine]
+    RAW[Any Public Raw .md URL] --> DV
+    DROP[Drag & Drop / Paste Local .md] --> DV
+    AI[AI Generated Base64 #data] --> DV
+    DV --> VIEW[Interactive Lightbox + Pan & Zoom + Mobile Responsive View]
+```
+
+### 1. View Any GitHub File via URL
+Pass any GitHub repository file directly into the URL:
+```
+https://virajverse.github.io/DocuVerse/?github=facebook/react/main/README.md
+```
+Or paste the full GitHub link:
+```
+https://virajverse.github.io/DocuVerse/?github=https://github.com/virajverse/DocuVerse/blob/main/README.md
+```
+
+### 2. View Any Public Raw URL
+```
+https://virajverse.github.io/DocuVerse/?url=https://raw.githubusercontent.com/virajverse/DocuVerse/main/README.md
+```
+
+### 3. Add the Official "View in DocuVerse" Badge to your Repo
+Add this badge at the top of your GitHub README or architecture PRD to let users inspect your Mermaid blueprints interactively:
+
+[![View in DocuVerse](https://img.shields.io/badge/DocuVerse-Interactive%20View-7c3aed?style=flat&logo=markdown)](https://virajverse.github.io/DocuVerse/?github=virajverse/DocuVerse/main/README.md)
+
+```markdown
+[![View in DocuVerse](https://img.shields.io/badge/DocuVerse-Interactive%20View-7c3aed?style=flat&logo=markdown)](https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md)
+```
+
+---
+
 ## ✨ Features at a Glance
+
+- 🌐 **Universal Markdown & GitHub Loader**
+  - Instant loading via `?github=owner/repo/branch/file.md` or `?url=https://...`.
+  - Zero-storage AI link sharing via Base64 hash `#data=...`.
+  - Global desktop & mobile drag-and-drop `.md` file dropzone + raw paste modal.
 
 - 🔍 **Interactive Mermaid Architecture Viewer**
   - Natural full-height rendering (no vertical cutoffs or squeezed nodes).

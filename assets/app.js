@@ -8,6 +8,13 @@
       file: "docs/backend-architecture.md",
       subtitle: "PRD v1.1.0 · Technical blueprint",
       content: DEFAULT_DOC_CONTENT
+    },
+    {
+      id: "readme",
+      title: "DocuVerse Specification",
+      file: "README.md",
+      subtitle: "Universal Showcase & Architecture Viewer",
+      content: ""
     }
   ];
 
@@ -475,8 +482,101 @@
   }
 
   /* ----------------------------------------------------
-     Document Loading & Local Storage Caching
+     Universal URL Resolver & Fallback Fetcher
   ---------------------------------------------------- */
+  function resolveMarkdownUrl(raw) {
+    if (!raw) return "";
+    let trimmed = raw.trim();
+
+    // 1. Full GitHub blob URL: https://github.com/:user/:repo/blob/:branch/:path
+    const ghBlobRegex = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/i;
+    const ghBlobMatch = trimmed.match(ghBlobRegex);
+    if (ghBlobMatch) {
+      return `https://raw.githubusercontent.com/${ghBlobMatch[1]}/${ghBlobMatch[2]}/${ghBlobMatch[3]}/${ghBlobMatch[4]}`;
+    }
+
+    // 2. Full GitHub raw URL: https://github.com/:user/:repo/raw/:branch/:path
+    const ghRawRegex = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/raw\/([^/]+)\/(.+)$/i;
+    const ghRawMatch = trimmed.match(ghRawRegex);
+    if (ghRawMatch) {
+      return `https://raw.githubusercontent.com/${ghRawMatch[1]}/${ghRawMatch[2]}/${ghRawMatch[3]}/${ghRawMatch[4]}`;
+    }
+
+    // 3. GitHub Gist URL: https://gist.github.com/:user/:id
+    const gistRegex = /^https?:\/\/gist\.github\.com\/([^/]+)\/([a-f0-9]+)/i;
+    const gistMatch = trimmed.match(gistRegex);
+    if (gistMatch) {
+      return `https://gist.githubusercontent.com/${gistMatch[1]}/${gistMatch[2]}/raw`;
+    }
+
+    // 4. Shorthand GitHub path: user/repo/branch/path/to/file.md
+    if (/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/.+\.md$/i.test(trimmed)) {
+      return `https://raw.githubusercontent.com/${trimmed}`;
+    }
+
+    return trimmed;
+  }
+
+  async function fetchMarkdownWithFallback(url) {
+    try {
+      const res = await fetch(url, { cache: "no-cache" });
+      if (res.ok) return await res.text();
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      // CORS fallback proxy for non-CORS enabled remote hosts
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const proxyRes = await fetch(proxyUrl);
+      if (proxyRes.ok) return await proxyRes.text();
+      throw err;
+    }
+  }
+
+  function decodeHashData() {
+    const hash = window.location.hash || "";
+    const match = hash.match(/(?:#|&)(?:data|md)=([^&]+)/);
+    if (!match) return null;
+    const rawVal = decodeURIComponent(match[1]);
+    try {
+      // Try base64 decode with UTF-8 support
+      const binStr = atob(rawVal);
+      const bytes = Uint8Array.from(binStr, c => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch (_) {
+      return rawVal;
+    }
+  }
+
+  function encodeHashData(markdown) {
+    try {
+      const bytes = new TextEncoder().encode(markdown);
+      const binStr = Array.from(bytes, byte => String.fromCharCode(byte)).join("");
+      return btoa(binStr);
+    } catch (_) {
+      return encodeURIComponent(markdown);
+    }
+  }
+
+  /* ----------------------------------------------------
+     Document Loading & Rendering Engine
+  ---------------------------------------------------- */
+  async function renderCustomMarkdown(content, title, filename) {
+    currentMarkdown = content;
+    currentFilename = filename || "document.md";
+    activeDoc = { id: "custom", title: title || "Custom Document", file: currentFilename, content };
+
+    const crumbEl = $("crumb-title");
+    if (crumbEl) crumbEl.textContent = title || "Custom Document";
+
+    // Mark active in sidebar
+    const container = $("document-list");
+    if (container) {
+      container.querySelectorAll(".doc-link").forEach(l => l.classList.remove("active"));
+    }
+
+    await renderMarkdown(currentMarkdown);
+    document.title = `${title || "Custom Document"} — DocuVerse by virajverse`;
+  }
+
   async function loadDocument(doc, changeList = false) {
     activeDoc = doc;
     currentFilename = doc.file.split("/").pop();
@@ -515,6 +615,59 @@
     if (changeList) history.pushState({}, "", `?doc=${encodeURIComponent(doc.id)}`);
   }
 
+  async function loadFromRemoteUrl(targetUrl, displayTitle) {
+    article.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Fetching and rendering document from URL…</p></div>';
+    try {
+      const resolved = resolveMarkdownUrl(targetUrl);
+      const text = await fetchMarkdownWithFallback(resolved);
+      const filename = resolved.split("/").pop().split("?")[0] || "document.md";
+      const title = displayTitle || filename.replace(/[-_]/g, " ").replace(/\.md$/i, "");
+      await renderCustomMarkdown(text, title, filename);
+      toast(`Loaded ${filename} successfully!`);
+    } catch (err) {
+      article.innerHTML = `<div class="loading-state"><p>Failed to load document from URL: <code>${targetUrl}</code></p><p style="color:var(--muted);font-size:12px;">Error: ${err.message}. Make sure the link is publicly accessible.</p></div>`;
+      toast("Could not load from URL. Verify link is public.");
+    }
+  }
+
+  async function routeAndLoad() {
+    // 1. Direct Base64 Hash Data (#data= or #md=)
+    const hashData = decodeHashData();
+    if (hashData) {
+      await renderCustomMarkdown(hashData, "Shared Document", "shared-document.md");
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    // 2. Query param ?github=
+    const githubParam = params.get("github");
+    if (githubParam) {
+      await loadFromRemoteUrl(githubParam);
+      return;
+    }
+
+    // 3. Query param ?url=
+    const urlParam = params.get("url");
+    if (urlParam) {
+      await loadFromRemoteUrl(urlParam);
+      return;
+    }
+
+    // 4. Query param ?gist=
+    const gistParam = params.get("gist");
+    if (gistParam) {
+      const gistUrl = gistParam.startsWith("http") ? gistParam : `https://gist.github.com/${gistParam}`;
+      await loadFromRemoteUrl(gistUrl, "GitHub Gist");
+      return;
+    }
+
+    // 5. Query param ?doc=
+    const docId = params.get("doc") || DOCS[0].id;
+    const matched = DOCS.find(d => d.id === docId) || DOCS[0];
+    await loadDocument(matched);
+  }
+
   function updateProgress() {
     const max = document.documentElement.scrollHeight - window.innerHeight;
     const percent = max > 0 ? Math.min(100, Math.max(0, window.scrollY / max * 100)) : 100;
@@ -532,10 +685,17 @@
   }
 
   async function shareLink() {
-    const url = window.location.href;
+    let url = window.location.href;
+    // If active document is custom and not in URL, create a sharable hash link if reasonable size (<8kb)
+    if (activeDoc && activeDoc.id === "custom" && !location.search && !location.hash) {
+      if (currentMarkdown.length < 8000) {
+        const encoded = encodeHashData(currentMarkdown);
+        url = `${location.origin}${location.pathname}#data=${encoded}`;
+      }
+    }
     try {
       await navigator.clipboard.writeText(url);
-      toast("Document link copied. Anyone with site access can open it.");
+      toast("Sharable document link copied to clipboard!");
     } catch (_) {
       window.prompt("Copy this document link:", url);
     }
@@ -573,6 +733,183 @@
         box.hidden = true;
       });
       box.append(btn);
+    });
+  }
+
+  /* ----------------------------------------------------
+     Open Document Modal Controller
+  ---------------------------------------------------- */
+  function setupOpenModal() {
+    const openModal = $("open-modal");
+    const openBtnTopbar = $("open-doc-topbar");
+    const openBtnToolbar = $("open-doc-button");
+    const closeBtn = $("open-modal-close");
+    const backdrop = $("open-modal-backdrop");
+    const tabBtns = document.querySelectorAll(".open-tab-btn");
+    const tabContents = document.querySelectorAll(".open-tab-content");
+
+    if (!openModal) return;
+
+    function showModal() {
+      openModal.hidden = false;
+      document.body.style.overflow = "hidden";
+      const input = $("custom-url-input");
+      if (input) setTimeout(() => input.focus(), 60);
+    }
+
+    function hideModal() {
+      openModal.hidden = true;
+      document.body.style.overflow = "";
+    }
+
+    if (openBtnTopbar) openBtnTopbar.addEventListener("click", showModal);
+    if (openBtnToolbar) openBtnToolbar.addEventListener("click", showModal);
+    if (closeBtn) closeBtn.addEventListener("click", hideModal);
+    if (backdrop) backdrop.addEventListener("click", hideModal);
+
+    // Tab Switching
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabContents.forEach(c => c.hidden = true);
+        btn.classList.add("active");
+        const targetId = btn.dataset.tab;
+        const targetContent = $(targetId);
+        if (targetContent) targetContent.hidden = false;
+      });
+    });
+
+    // Tab 1: Load URL
+    const loadUrlBtn = $("load-url-btn");
+    const customUrlInput = $("custom-url-input");
+    if (loadUrlBtn && customUrlInput) {
+      const handleLoadUrl = async () => {
+        const val = customUrlInput.value.trim();
+        if (!val) return;
+        hideModal();
+        history.pushState({}, "", `?url=${encodeURIComponent(val)}`);
+        await loadFromRemoteUrl(val);
+      };
+      loadUrlBtn.addEventListener("click", handleLoadUrl);
+      customUrlInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleLoadUrl();
+      });
+    }
+
+    // Sample Chips
+    document.querySelectorAll(".sample-chip").forEach(chip => {
+      chip.addEventListener("click", async () => {
+        const sampleKey = chip.dataset.sample;
+        hideModal();
+        const doc = DOCS.find(d => d.id === (sampleKey === "readme" ? "readme" : "backend-architecture")) || DOCS[0];
+        history.pushState({}, "", `?doc=${doc.id}`);
+        await loadDocument(doc);
+      });
+    });
+
+    // Tab 2: File Picker & Dropzone
+    const dropzone = $("modal-dropzone");
+    const fileInput = $("file-input");
+    if (dropzone && fileInput) {
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+      });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          readFile(e.dataTransfer.files[0]);
+        }
+      });
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          readFile(e.target.files[0]);
+        }
+      });
+
+      function readFile(file) {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          hideModal();
+          const content = ev.target.result;
+          const title = file.name.replace(/[-_]/g, " ").replace(/\.md$/i, "");
+          history.pushState({}, "", window.location.pathname);
+          await renderCustomMarkdown(content, title, file.name);
+          toast(`Loaded ${file.name} successfully!`);
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    // Tab 3: Paste Markdown
+    const renderPastedBtn = $("render-pasted-btn");
+    const pasteInput = $("paste-markdown-input");
+    if (renderPastedBtn && pasteInput) {
+      renderPastedBtn.addEventListener("click", async () => {
+        const text = pasteInput.value.trim();
+        if (!text) return;
+        hideModal();
+        history.pushState({}, "", window.location.pathname);
+        await renderCustomMarkdown(text, "Pasted Markdown Document", "document.md");
+        toast("Rendered pasted Markdown document!");
+      });
+    }
+
+    // Modal Escape Key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !openModal.hidden) {
+        hideModal();
+      }
+    });
+  }
+
+  /* ----------------------------------------------------
+     Global Window Drag and Drop
+  ---------------------------------------------------- */
+  function setupGlobalDragDrop() {
+    const overlay = $("global-drop-overlay");
+    if (!overlay) return;
+
+    let dragCounter = 0;
+
+    window.addEventListener("dragenter", (e) => {
+      e.preventDefault();
+      dragCounter++;
+      overlay.hidden = false;
+    });
+
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener("dragleave", () => {
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        overlay.hidden = true;
+      }
+    });
+
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      overlay.hidden = true;
+
+      const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const content = ev.target.result;
+        const title = file.name.replace(/[-_]/g, " ").replace(/\.md$/i, "");
+        history.pushState({}, "", window.location.pathname);
+        await renderCustomMarkdown(content, title, file.name);
+        toast(`Loaded ${file.name} successfully!`);
+      };
+      reader.readAsText(file);
     });
   }
 
@@ -630,14 +967,13 @@
 
   window.addEventListener("scroll", updateProgress, { passive: true });
   window.addEventListener("resize", updateProgress);
-  window.addEventListener("popstate", () => {
-    const id = new URLSearchParams(location.search).get("doc") || DOCS[0].id;
-    loadDocument(DOCS.find(d => d.id === id) || DOCS[0]);
-  });
+  window.addEventListener("popstate", () => routeAndLoad());
+  window.addEventListener("hashchange", () => routeAndLoad());
 
   window.addEventListener("DOMContentLoaded", async () => {
     enforceLightTheme();
-    const id = new URLSearchParams(location.search).get("doc") || DOCS[0].id;
-    await loadDocument(DOCS.find(d => d.id === id) || DOCS[0]);
+    setupOpenModal();
+    setupGlobalDragDrop();
+    await routeAndLoad();
   });
 })();
