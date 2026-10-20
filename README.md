@@ -65,14 +65,17 @@ When someone opens a Markdown or PRD file on GitHub or raw web, they can immedia
 ```markdown
 <div align="center">
 
-[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_Architecture_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md)
+[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md)
 
-<p><b>📱 Reading on GitHub?</b> <a href="https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md"><b>Click here to open in DocuVerse</b></a> for interactive pan & zoom, fullscreen diagram lightbox, mobile reading mode and dynamic TOC.</p>
+| 📱 **Mobile Users** | 💻 **Laptop / Desktop Users** |
+| :---: | :---: |
+| GitHub mobile shrinks diagrams and cuts off labels. <br> 👉 [**Tap to Open in Mobile Reader / PWA**](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md) | Inspect complex diagrams at up to 300% zoom without clipping. <br> 👉 [**Open Fullscreen Lightbox & Pan/Zoom**](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md) |
 
 ---
 
 </div>
 ```
+*(Tip: You can also click the **"⚡ Get README Badge"** button inside the [DocuVerse toolbar](https://docuversee.vercel.app/) to generate this snippet automatically for your repository!)*
 
 ### 4. Install as a Native Web App (Mobile & Desktop PWA)
 DocuVerse is a **Progressive Web App (PWA)**:

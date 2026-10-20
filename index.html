@@ -96,6 +96,7 @@
       <section class="document-toolbar" aria-label="Document actions">
         <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="read-time">Reading time —</span><span class="meta-dot">·</span><span id="word-count">— words</span></div>
         <div class="toolbar-actions">
+          <button class="secondary-button" id="badge-button" title="Get 1-click badge & banner for your GitHub README"><span>⚡</span> Get README Badge</button>
           <button class="secondary-button" id="download-button" title="Download Markdown file"><span>↓</span> Download .md</button>
           <button class="primary-button" id="copy-link-button" title="Share document link"><span>↗</span> Share document</button>
         </div>
@@ -148,6 +149,33 @@
             <button type="button" class="secondary-button" id="render-pasted-btn">Render Text</button>
           </div>
         </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- GitHub README Badge Modal -->
+  <div class="open-modal" id="badge-modal" hidden role="dialog" aria-modal="true" aria-label="Get GitHub README Badge">
+    <div class="open-modal-backdrop" id="badge-modal-backdrop"></div>
+    <div class="open-modal-card">
+      <div class="open-modal-header">
+        <div class="open-modal-title">
+          <span class="open-modal-icon">⚡</span>
+          <strong>1-Click DocuVerse Badge for GitHub</strong>
+        </div>
+        <button class="diagram-ctrl-btn modal-close-btn" id="badge-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
+      </div>
+      <div class="open-modal-body">
+        <p class="tab-description">Paste this at the top of your GitHub <code>README.md</code> or PRD. Mobile readers get 1-tap mobile reader, laptop readers get deep pan & zoom:</p>
+        <div class="badge-preview-box">
+          <img src="https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white" alt="DocuVerse Badge Preview">
+        </div>
+        <div class="badge-code-wrap">
+          <label for="badge-markdown-code"><strong>Markdown Snippet (Mobile + Desktop Smart Table):</strong></label>
+          <textarea id="badge-markdown-code" readonly rows="7"></textarea>
+        </div>
+        <div class="modal-footer-actions">
+          <button type="button" class="primary-button" id="copy-badge-btn"><span>📋</span> Copy Snippet to Clipboard</button>
+        </div>
       </div>
     </div>
   </div>
