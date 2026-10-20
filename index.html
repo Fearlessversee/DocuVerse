@@ -10,7 +10,7 @@
   
   <!-- Open Graph / Social Sharing -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://virajverse.github.io/">
+  <meta property="og:url" content="https://docuversee.vercel.app/">
   <meta property="og:title" content="DocuVerse — Zero-Backend Interactive Markdown & Mermaid Showcase">
   <meta property="og:description" content="High-performance, zero-backend Markdown document showcase with interactive zoomable Mermaid diagrams, real-time TOC, and reading progress. Built by virajverse.">
   
@@ -26,6 +26,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "DocuVerse",
+    "url": "https://docuversee.vercel.app/",
     "operatingSystem": "All",
     "applicationCategory": "DeveloperApplication",
     "description": "Zero-backend, lightweight, responsive Markdown and interactive Mermaid architecture documentation showcase with deep pan, zoom, and fullscreen modal.",
@@ -87,16 +88,14 @@
         <div class="breadcrumbs"><span>Library</span><span class="crumb-separator">/</span><strong id="crumb-title">Backend Architecture</strong></div>
         <div class="top-actions">
           <button class="pwa-install-btn" id="pwa-install-btn" hidden type="button" title="Install DocuVerse App on mobile or desktop"><span class="btn-icon">📲</span> Install App</button>
-          <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL, GitHub or File"><span class="btn-icon">＋</span> Open .md</button>
+          <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL or GitHub"><span class="btn-icon">＋</span> Open URL</button>
           <label class="search-box" for="doc-search"><span class="search-icon">⌕</span><input id="doc-search" type="search" placeholder="Find in document…" autocomplete="off"><kbd>Ctrl K</kbd></label>
-          <button class="icon-button" id="share-button" aria-label="Copy share link" title="Copy share link">↗</button>
         </div>
       </header>
 
       <section class="document-toolbar" aria-label="Document actions">
         <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="read-time">Reading time —</span><span class="meta-dot">·</span><span id="word-count">— words</span></div>
         <div class="toolbar-actions">
-          <button class="secondary-button" id="open-doc-button" title="Open Markdown from URL, GitHub or File"><span>＋</span> Open Document</button>
           <button class="secondary-button" id="download-button" title="Download Markdown file"><span>↓</span> Download .md</button>
           <button class="primary-button" id="copy-link-button" title="Share document link"><span>↗</span> Share document</button>
         </div>
@@ -120,64 +119,36 @@
   <div class="mobile-scrim" id="mobile-scrim"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- Open Document Modal -->
+  <!-- Open Document by URL Modal -->
   <div class="open-modal" id="open-modal" hidden role="dialog" aria-modal="true" aria-label="Open Markdown Document">
     <div class="open-modal-backdrop" id="open-modal-backdrop"></div>
     <div class="open-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
           <span class="open-modal-icon">✦</span>
-          <strong>Open Markdown Document</strong>
+          <strong>Open Markdown by URL</strong>
         </div>
         <button class="diagram-ctrl-btn modal-close-btn" id="open-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
       </div>
-      <div class="open-modal-tabs">
-        <button type="button" class="open-tab-btn active" data-tab="tab-url">From GitHub / URL</button>
-        <button type="button" class="open-tab-btn" data-tab="tab-file">Upload / Drop File</button>
-        <button type="button" class="open-tab-btn" data-tab="tab-paste">Paste Raw Markdown</button>
-      </div>
       <div class="open-modal-body">
-        <!-- Tab 1: URL / GitHub -->
-        <div class="open-tab-content active" id="tab-url">
-          <p class="tab-description">Enter any public GitHub Markdown link or raw Markdown URL to render it interactively:</p>
-          <div class="url-input-group">
-            <input type="url" id="custom-url-input" placeholder="e.g. https://github.com/virajverse/DocuVerse/blob/main/README.md" autocomplete="off">
-            <button type="button" class="primary-button" id="load-url-btn">Load & Render</button>
-          </div>
-          <div class="quick-examples">
-            <span class="examples-label">Try quick samples:</span>
-            <button type="button" class="sample-chip" data-sample="backend">Architecture Blueprint</button>
-            <button type="button" class="sample-chip" data-sample="readme">DocuVerse README</button>
-          </div>
+        <p class="tab-description">Enter any public GitHub Markdown link or raw Markdown URL to view it interactively:</p>
+        <div class="url-input-group">
+          <input type="url" id="custom-url-input" placeholder="e.g. https://github.com/virajverse/DocuVerse/blob/main/README.md" autocomplete="off">
+          <button type="button" class="primary-button" id="load-url-btn">Load & View</button>
         </div>
-
-        <!-- Tab 2: File Upload / Dropzone -->
-        <div class="open-tab-content" id="tab-file" hidden>
-          <div class="dropzone" id="modal-dropzone">
-            <div class="dropzone-icon">📁</div>
-            <strong>Drag and drop any .md file here</strong>
-            <span>or click to browse from your device</span>
-            <input type="file" id="file-input" accept=".md,.markdown,text/markdown,text/plain" hidden>
-          </div>
+        <div class="quick-examples">
+          <span class="examples-label">Quick samples:</span>
+          <button type="button" class="sample-chip" data-sample="backend">Architecture Blueprint</button>
+          <button type="button" class="sample-chip" data-sample="readme">DocuVerse Specification</button>
         </div>
-
-        <!-- Tab 3: Paste Raw Text -->
-        <div class="open-tab-content" id="tab-paste" hidden>
-          <textarea id="paste-markdown-input" placeholder="Paste raw markdown here (including ```mermaid code blocks)..." rows="9"></textarea>
+        <details class="paste-details">
+          <summary>Or paste raw Markdown directly</summary>
+          <textarea id="paste-markdown-input" placeholder="Paste raw markdown here (including ```mermaid code blocks)..." rows="6"></textarea>
           <div class="paste-actions">
-            <button type="button" class="primary-button" id="render-pasted-btn">Render Document</button>
+            <button type="button" class="secondary-button" id="render-pasted-btn">Render Text</button>
           </div>
-        </div>
+        </details>
       </div>
-    </div>
-  </div>
-
-  <!-- Global Drag and Drop Overlay -->
-  <div class="global-drop-overlay" id="global-drop-overlay" hidden>
-    <div class="drop-overlay-box">
-      <div class="drop-overlay-icon">📥</div>
-      <h3>Drop your Markdown file here</h3>
-      <p>DocuVerse will instantly render it with interactive Mermaid diagrams</p>
     </div>
   </div>
 

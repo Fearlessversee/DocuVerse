@@ -14,7 +14,7 @@
   <b>Turn complex Technical PRDs, System Designs, and Architecture Blueprints into beautiful, interactive, production-grade web documents — with zero backend, zero build step, and instant 1-click hosting.</b>
 </p>
 
-[**Explore Live Demo »**](https://virajverse.github.io/docuverse/) · [**Report Bug**](https://github.com/virajverse/docuverse/issues) · [**Request Feature**](https://github.com/virajverse/docuverse/issues)
+[**Explore Live Demo »**](https://docuversee.vercel.app/) · [**Report Bug**](https://github.com/virajverse/DocuVerse/issues) · [**Request Feature**](https://github.com/virajverse/DocuVerse/issues)
 
 </div>
 
@@ -25,7 +25,7 @@
 | The Pain Point | How DocuVerse Solves It |
 | :--- | :--- |
 | **Mermaid diagrams get clipped or unreadable** on standard GitHub or static pages when flowcharts are large. | **Interactive Pan & Zoom + Fullscreen Lightbox Modal**: inspect every node, connection, and label at up to 300% zoom without clipping. |
-| **Heavy documentation frameworks** (Docusaurus, Nextra, GitBook) require complex Node.js builds, npm packages, or paid tiers. | **100% Static & Zero Build**: Drop HTML/CSS/JS onto GitHub Pages, Vercel, or Netlify and it runs instantly. |
+| **Heavy documentation frameworks** (Docusaurus, Nextra, GitBook) require complex Node.js builds, npm packages, or paid tiers. | **100% Static & Zero Build**: Drop HTML/CSS/JS onto Vercel, GitHub Pages, or Netlify and it runs instantly. |
 | **Ugly default themes & cluttered interfaces** distract from technical content. | **Distraction-Free Pure Light Theme**: Curated typography (*Plus Jakarta Sans* & *JetBrains Mono*), zero focus borders, clean visual hierarchy. |
 | **Offline viewing fails** due to browser local file CORS restrictions. | **Smart LocalStorage & Embedded Caching**: Load once or run locally with offline resilience. |
 
@@ -39,7 +39,7 @@ DocuVerse is not just a showcase — it's a **universal viewer for any Markdown 
 flowchart LR
     GH[Any GitHub Markdown URL] --> DV[DocuVerse Engine]
     RAW[Any Public Raw .md URL] --> DV
-    DROP[Drag & Drop / Paste Local .md] --> DV
+    PASTE[Paste Raw Markdown / URL Input] --> DV
     AI[AI Generated Base64 #data] --> DV
     DV --> VIEW[Interactive Lightbox + Pan & Zoom + Mobile Responsive View]
 ```
@@ -47,16 +47,16 @@ flowchart LR
 ### 1. View Any GitHub File via URL
 Pass any GitHub repository file directly into the URL:
 ```
-https://virajverse.github.io/DocuVerse/?github=facebook/react/main/README.md
+https://docuversee.vercel.app/?github=facebook/react/main/README.md
 ```
 Or paste the full GitHub link:
 ```
-https://virajverse.github.io/DocuVerse/?github=https://github.com/virajverse/DocuVerse/blob/main/README.md
+https://docuversee.vercel.app/?github=https://github.com/virajverse/DocuVerse/blob/main/README.md
 ```
 
 ### 2. View Any Public Raw URL
 ```
-https://virajverse.github.io/DocuVerse/?url=https://raw.githubusercontent.com/virajverse/DocuVerse/main/README.md
+https://docuversee.vercel.app/?url=https://raw.githubusercontent.com/virajverse/DocuVerse/main/README.md
 ```
 
 ### 3. Add 1-Click Redirect Banner into ANY Markdown File
@@ -65,9 +65,9 @@ When someone opens a Markdown or PRD file on GitHub or raw web, they can immedia
 ```markdown
 <div align="center">
 
-[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_Architecture_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md)
+[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_Architecture_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md)
 
-<p><b>📱 Reading on GitHub?</b> <a href="https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md"><b>Click here to open in DocuVerse</b></a> for interactive pan & zoom, fullscreen diagram lightbox, mobile reading mode and dynamic TOC.</p>
+<p><b>📱 Reading on GitHub?</b> <a href="https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md"><b>Click here to open in DocuVerse</b></a> for interactive pan & zoom, fullscreen diagram lightbox, mobile reading mode and dynamic TOC.</p>
 
 ---
 
@@ -93,7 +93,7 @@ DocuVerse is a **Progressive Web App (PWA)**:
   - Add 1-click header banners to any `.md` file to jump straight into DocuVerse.
   - Instant loading via `?github=owner/repo/branch/file.md` or `?url=https://...`.
   - Zero-storage AI link sharing via Base64 hash `#data=...`.
-  - Global desktop & mobile drag-and-drop `.md` file dropzone + raw paste modal.
+  - Clean URL loader with quick samples and raw paste modal.
 
 - 🔍 **Interactive Mermaid Architecture Viewer**
   - Natural full-height rendering (no vertical cutoffs or squeezed nodes).
@@ -185,10 +185,11 @@ git push -u origin main
 4. Click **Save**.
 
 ### Step 4: Your Site is Live! 🎉
-In 30–60 seconds, your site will be live at:
+Your site is now live on Vercel at:
 ```
-https://virajverse.github.io/docuverse/
+https://docuversee.vercel.app/
 ```
+(Or on GitHub Pages at `https://virajverse.github.io/DocuVerse/`)
 
 ---
 
