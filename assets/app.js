@@ -996,6 +996,23 @@
       hideInstallButtons();
       deferredInstallPrompt = null;
     });
+
+    // OS File Handler (Opens .md files directly from Android / Windows / Mac File Manager)
+    if ("launchQueue" in window && "files" in window.LaunchParams.prototype) {
+      window.launchQueue.setConsumer(async (launchParams) => {
+        if (!launchParams.files || !launchParams.files.length) return;
+        try {
+          const fileHandle = launchParams.files[0];
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+          await renderCustomMarkdown(text, cleanTitle, file.name);
+          toast(`Opened: ${file.name}`);
+        } catch (err) {
+          console.warn("DocuVerse file handler error:", err);
+        }
+      });
+    }
   }
 
   /* ----------------------------------------------------
