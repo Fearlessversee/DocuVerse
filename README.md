@@ -59,20 +59,38 @@ https://virajverse.github.io/DocuVerse/?github=https://github.com/virajverse/Doc
 https://virajverse.github.io/DocuVerse/?url=https://raw.githubusercontent.com/virajverse/DocuVerse/main/README.md
 ```
 
-### 3. Add the Official "View in DocuVerse" Badge to your Repo
-Add this badge at the top of your GitHub README or architecture PRD to let users inspect your Mermaid blueprints interactively:
-
-[![View in DocuVerse](https://img.shields.io/badge/DocuVerse-Interactive%20View-7c3aed?style=flat&logo=markdown)](https://virajverse.github.io/DocuVerse/?github=virajverse/DocuVerse/main/README.md)
+### 3. Add 1-Click Redirect Banner into ANY Markdown File
+When someone opens a Markdown or PRD file on GitHub or raw web, they can immediately jump to the interactive DocuVerse view with zero manual steps. Put this at line 1 of your `.md` file:
 
 ```markdown
-[![View in DocuVerse](https://img.shields.io/badge/DocuVerse-Interactive%20View-7c3aed?style=flat&logo=markdown)](https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md)
+<div align="center">
+
+[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_Architecture_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md)
+
+<p><b>📱 Reading on GitHub?</b> <a href="https://virajverse.github.io/DocuVerse/?github=OWNER/REPO/BRANCH/PATH.md"><b>Click here to open in DocuVerse</b></a> for interactive pan & zoom, fullscreen diagram lightbox, mobile reading mode and dynamic TOC.</p>
+
+---
+
+</div>
 ```
+
+### 4. Install as a Native Web App (Mobile & Desktop PWA)
+DocuVerse is a **Progressive Web App (PWA)**:
+- **On Android / Chrome / Edge:** Tap **"📲 Install App"** in the topbar or browser menu to add DocuVerse to your home screen or desktop dock.
+- **On iPhone / Safari:** Tap the **Share** button (`⎋`) → **"Add to Home Screen"**.
+- **Works Offline:** Once installed, the app shell and cached documents open instantly even with zero network connectivity.
 
 ---
 
 ## ✨ Features at a Glance
 
-- 🌐 **Universal Markdown & GitHub Loader**
+- 📲 **Installable Progressive Web App (PWA)**
+  - 1-Tap install on mobile (Android/iOS) and desktop (Chrome/Edge/Mac).
+  - Standalone app mode without browser address bar.
+  - Offline Service Worker caching (`sw.js`) for instant loading.
+
+- 🌐 **1-Click Markdown Redirect & Universal Loader**
+  - Add 1-click header banners to any `.md` file to jump straight into DocuVerse.
   - Instant loading via `?github=owner/repo/branch/file.md` or `?url=https://...`.
   - Zero-storage AI link sharing via Base64 hash `#data=...`.
   - Global desktop & mobile drag-and-drop `.md` file dropzone + raw paste modal.

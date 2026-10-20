@@ -44,6 +44,13 @@
 
   <title>DocuVerse — Zero-Backend Markdown & Mermaid Showcase</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="DocuVerse">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -65,12 +72,13 @@
       <div class="side-label">LIBRARY</div>
       <nav class="document-list" id="document-list" aria-label="Documents"></nav>
       <div class="sidebar-spacer"></div>
+      <button class="sidebar-install-btn" id="sidebar-install-btn" hidden type="button"><span>📲</span> Install DocuVerse App</button>
       <div class="side-card">
         <div class="side-card-icon">✦</div>
         <strong>Readable by design</strong>
         <p>Markdown, Mermaid diagrams, code blocks and headings in one clean view.</p>
       </div>
-      <div class="sidebar-foot">DocuVerse v1.0 · by <a href="https://github.com/virajverse" target="_blank" rel="noopener">virajverse</a></div>
+      <div class="sidebar-foot">DocuVerse v1.1 · by <a href="https://github.com/virajverse" target="_blank" rel="noopener">virajverse</a></div>
     </aside>
 
     <main class="main-area">
@@ -78,6 +86,7 @@
         <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation" title="Open navigation">☰</button>
         <div class="breadcrumbs"><span>Library</span><span class="crumb-separator">/</span><strong id="crumb-title">Backend Architecture</strong></div>
         <div class="top-actions">
+          <button class="pwa-install-btn" id="pwa-install-btn" hidden type="button" title="Install DocuVerse App on mobile or desktop"><span class="btn-icon">📲</span> Install App</button>
           <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL, GitHub or File"><span class="btn-icon">＋</span> Open .md</button>
           <label class="search-box" for="doc-search"><span class="search-icon">⌕</span><input id="doc-search" type="search" placeholder="Find in document…" autocomplete="off"><kbd>Ctrl K</kbd></label>
           <button class="icon-button" id="share-button" aria-label="Copy share link" title="Copy share link">↗</button>

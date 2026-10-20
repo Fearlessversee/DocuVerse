@@ -1,0 +1,31 @@
+{
+  "name": "DocuVerse — Interactive Markdown & Mermaid Showcase",
+  "short_name": "DocuVerse",
+  "description": "High-performance, zero-backend interactive Markdown and Mermaid architecture showcase with deep pan, zoom, and fullscreen lightbox.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

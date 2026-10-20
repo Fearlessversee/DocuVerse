@@ -1,3 +1,13 @@
+<div align="center">
+
+[![⚡ Open Interactive Architecture View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_Architecture_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://virajverse.github.io/DocuVerse/?github=virajverse/DocuVerse/main/docs/backend-architecture.md)
+
+<p><b>📱 Reading this on GitHub?</b> <a href="https://virajverse.github.io/DocuVerse/?github=virajverse/DocuVerse/main/docs/backend-architecture.md"><b>Click here to open in DocuVerse</b></a> for interactive pan & zoom, fullscreen diagram lightbox modal, mobile reading mode and dynamic TOC.</p>
+
+---
+
+</div>
+
 # AI Lead Generation & Website Intelligence Agent
 ## Improved Backend Architecture — PRD v1.1.0 Alignment
 
