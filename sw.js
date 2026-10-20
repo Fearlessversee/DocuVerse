@@ -1,4 +1,4 @@
-const CACHE_NAME = "docuverse-v1.1";
+const CACHE_NAME = "docuverse-v1.2";
 const STATIC_ASSETS = [
   "./",
   "index.html",
@@ -8,7 +8,8 @@ const STATIC_ASSETS = [
   "assets/favicon.svg",
   "assets/icon-192.png",
   "assets/icon-512.png",
-  "docs/backend-architecture.md"
+  "docs/backend-architecture.md",
+  "docs/readme.md"
 ];
 
 self.addEventListener("install", (event) => {

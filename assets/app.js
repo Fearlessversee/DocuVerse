@@ -12,7 +12,7 @@
     {
       id: "readme",
       title: "DocuVerse Specification",
-      file: "README.md",
+      file: "docs/readme.md",
       subtitle: "Universal Showcase & Architecture Viewer",
       content: ""
     }
@@ -596,16 +596,28 @@
         throw new Error(`HTTP ${res.status}`);
       }
     } catch (error) {
-      // Offline / file:// protocol fallback: check LocalStorage or bundled content
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        loadedMarkdown = cached;
-      } else if (doc.content) {
-        loadedMarkdown = doc.content;
-        try { localStorage.setItem(cacheKey, loadedMarkdown); } catch (_) {}
-      } else {
-        article.innerHTML = `<div class="loading-state"><p>Could not load Markdown (${String(error.message)}).</p><p>Check server connection or reload page.</p></div>`;
-        return;
+      // 1. Try fetching from GitHub raw as automated fallback
+      try {
+        const ghFallback = `https://raw.githubusercontent.com/virajverse/DocuVerse/main/${doc.file}`;
+        const ghRes = await fetch(ghFallback);
+        if (ghRes.ok) {
+          loadedMarkdown = await ghRes.text();
+          try { localStorage.setItem(cacheKey, loadedMarkdown); } catch (_) {}
+        }
+      } catch (_) {}
+
+      // 2. Offline / LocalStorage / embedded content fallback
+      if (!loadedMarkdown) {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          loadedMarkdown = cached;
+        } else if (doc.content) {
+          loadedMarkdown = doc.content;
+          try { localStorage.setItem(cacheKey, loadedMarkdown); } catch (_) {}
+        } else {
+          article.innerHTML = `<div class="loading-state"><p>Could not load Markdown (${String(error.message)}).</p><p>Check server connection or reload page.</p></div>`;
+          return;
+        }
       }
     }
 
