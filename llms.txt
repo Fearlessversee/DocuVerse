@@ -1,0 +1,62 @@
+# DocuVerse by virajverse
+
+> High-performance, zero-backend Markdown and interactive Mermaid architecture documentation showcase with deep pan, zoom, and fullscreen lightbox modal.
+
+- **Author / Maintainer:** virajverse (https://github.com/virajverse)
+- **Repository:** https://github.com/virajverse/docuverse
+- **Live Demo:** https://virajverse.github.io/docuverse/
+- **License:** MIT
+- **Keywords:** markdown-viewer, mermaid-viewer, interactive-mermaid, architecture-diagrams, pan-zoom, technical-documentation, zero-backend, github-pages, prd-showcase
+
+## Overview
+
+DocuVerse is a lightweight, 100% client-side web application designed to turn complex Markdown documents, Technical PRDs, and architecture blueprints with Mermaid diagrams into beautiful, interactive, production-grade documentation showcases.
+
+### The Problem It Solves
+
+1. **Standard Markdown Limitations**: GitHub and standard static tools render Mermaid diagrams as static, clipped, or tiny SVGs where text inside complex flowcharts is unreadable and impossible to zoom into.
+2. **Heavy Framework Overhead**: Tools like Docusaurus, Nextra, or GitBook require Node.js runtimes, npm build pipelines, server environments, or paid tiers.
+3. **DocuVerse Solution**: 
+   - Zero backend / zero build step: Works instantly on GitHub Pages, Vercel, Netlify, or local static files.
+   - Deep interactive pan & zoom for Mermaid diagrams with controls (`+`, `-`, `reset`) and a 1-click Fullscreen Lightbox Modal for granular inspection.
+   - Minimalist, distraction-free pure light design system with Plus Jakarta Sans and JetBrains Mono typography.
+   - Auto-generated hierarchical Table of Contents with active scroll spy and reading progress tracking.
+   - Client-side document switching, instant in-document search, reading time calculation, and 1-click code copying.
+   - LocalStorage offline caching: load once, read anywhere without network dependency.
+
+## Key Technical Specifications
+
+- **Core Tech**: Vanilla HTML5, Vanilla CSS3 (Custom Design Tokens), Modern Vanilla JavaScript (ES6+).
+- **Libraries Loaded**:
+  - `marked.js` (Markdown parsing)
+  - `dompurify` (Strict XSS sanitization)
+  - `mermaid.js` (Architecture diagram rendering)
+  - `highlight.js` (Syntax highlighting for code blocks)
+- **Hostable Platforms**: GitHub Pages, Cloudflare Pages, Vercel, Netlify, Amazon S3, or any static file server.
+
+## Quick Start for Developers
+
+```bash
+# Clone the repository
+git clone https://github.com/virajverse/docuverse.git
+cd docuverse
+
+# Run locally in seconds
+py -m http.server 8080
+# or
+npx serve
+```
+
+## Adding Custom Documents
+
+1. Place your `.md` file in the `docs/` folder.
+2. Add the document metadata to the `DOCS` array in `assets/app.js`:
+   ```javascript
+   {
+     id: "my-doc",
+     title: "System Architecture",
+     file: "docs/my-doc.md",
+     subtitle: "Technical blueprint v1.0"
+   }
+   ```
+3. Commit and push to GitHub. GitHub Pages automatically serves the new document.

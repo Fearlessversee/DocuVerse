@@ -1,0 +1,22 @@
+# robots.txt for DocuVerse (by virajverse)
+User-agent: *
+Allow: /
+
+# Explicit AI Agent & Search indexing permissions
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /

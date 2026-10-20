@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="DocuVerse by virajverse — High-performance, zero-backend Markdown and interactive Mermaid architecture documentation showcase with deep pan, zoom, and fullscreen lightbox.">
+  <meta name="author" content="virajverse">
+  <meta name="keywords" content="docuverse, virajverse, markdown showcase, mermaid viewer, interactive mermaid, architecture diagrams, zero backend docs, github pages markdown, technical documentation, prd viewer">
+  
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://virajverse.github.io/">
+  <meta property="og:title" content="DocuVerse — Zero-Backend Interactive Markdown & Mermaid Showcase">
+  <meta property="og:description" content="High-performance, zero-backend Markdown document showcase with interactive zoomable Mermaid diagrams, real-time TOC, and reading progress. Built by virajverse.">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DocuVerse — Zero-Backend Interactive Markdown & Mermaid Showcase">
+  <meta name="twitter:description" content="High-performance, zero-backend Markdown document showcase with interactive zoomable Mermaid diagrams, real-time TOC, and reading progress. Built by virajverse.">
+  <meta name="twitter:creator" content="@virajverse">
+
+  <!-- Structured Data (JSON-LD) for Search Engines & AI Agents -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "DocuVerse",
+    "operatingSystem": "All",
+    "applicationCategory": "DeveloperApplication",
+    "description": "Zero-backend, lightweight, responsive Markdown and interactive Mermaid architecture documentation showcase with deep pan, zoom, and fullscreen modal.",
+    "author": {
+      "@type": "Person",
+      "name": "virajverse",
+      "url": "https://github.com/virajverse"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+
+  <title>DocuVerse — Zero-Backend Markdown & Mermaid Showcase</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/styles/github.min.css" id="code-theme-light">
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/highlight.min.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Document navigation">
+      <a class="brand" href="./" aria-label="DocuVerse home">
+        <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 3.75h10l7 7V27a1.25 1.25 0 0 1-1.25 1.25H8A1.25 1.25 0 0 1 6.75 27V5A1.25 1.25 0 0 1 8 3.75Z"/><path d="M18 4v7h7M11 17h10M11 21h10"/></svg></span>
+        <span><strong>DocuVerse</strong><small>by virajverse</small></span>
+      </a>
+      <div class="side-label">LIBRARY</div>
+      <nav class="document-list" id="document-list" aria-label="Documents"></nav>
+      <div class="sidebar-spacer"></div>
+      <div class="side-card">
+        <div class="side-card-icon">✦</div>
+        <strong>Readable by design</strong>
+        <p>Markdown, Mermaid diagrams, code blocks and headings in one clean view.</p>
+      </div>
+      <div class="sidebar-foot">DocuVerse v1.0 · by <a href="https://github.com/virajverse" target="_blank" rel="noopener">virajverse</a></div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation" title="Open navigation">☰</button>
+        <div class="breadcrumbs"><span>Library</span><span class="crumb-separator">/</span><strong id="crumb-title">Backend Architecture</strong></div>
+        <div class="top-actions">
+          <label class="search-box" for="doc-search"><span class="search-icon">⌕</span><input id="doc-search" type="search" placeholder="Find in document…" autocomplete="off"><kbd>Ctrl K</kbd></label>
+          <button class="icon-button" id="share-button" aria-label="Copy share link" title="Copy share link">↗</button>
+        </div>
+      </header>
+
+      <section class="document-toolbar" aria-label="Document actions">
+        <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="read-time">Reading time —</span><span class="meta-dot">·</span><span id="word-count">— words</span></div>
+        <div class="toolbar-actions">
+          <button class="secondary-button" id="download-button" title="Download Markdown file"><span>↓</span> Download .md</button>
+          <button class="primary-button" id="copy-link-button" title="Share document link"><span>↗</span> Share document</button>
+        </div>
+      </section>
+
+      <div class="search-results" id="search-results" hidden aria-live="polite"></div>
+
+      <div class="content-layout">
+        <article class="markdown-document" id="markdown-document">
+          <div class="loading-state"><div class="loading-spinner"></div><p>Rendering document…</p></div>
+        </article>
+        <aside class="toc-panel" aria-label="On this page">
+          <div class="toc-title">ON THIS PAGE</div>
+          <nav id="table-of-contents"></nav>
+          <div class="reading-progress"><div class="progress-heading"><span>Reading progress</span><strong id="progress-label">0%</strong></div><div class="progress-track"><span id="progress-bar"></span></div></div>
+        </aside>
+      </div>
+      <footer class="page-footer"><span>Rendered with <a href="https://github.com/virajverse" target="_blank" rel="noopener"><strong>DocuVerse</strong></a> by <strong>virajverse</strong></span><span><span class="footer-status-dot"></span> Interactive Mermaid viewer</span><a href="https://github.com/virajverse" target="_blank" rel="noopener">GitHub</a></footer>
+    </main>
+  </div>
+  <div class="mobile-scrim" id="mobile-scrim"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Mermaid Interactive Zoom Modal -->
+  <div class="diagram-modal" id="diagram-modal" hidden role="dialog" aria-modal="true" aria-label="Mermaid Diagram Viewer">
+    <div class="diagram-modal-backdrop" id="modal-backdrop"></div>
+    <div class="diagram-modal-card">
+      <div class="diagram-modal-header">
+        <div class="diagram-modal-title">
+          <span class="diagram-modal-badge"></span>
+          <strong>Architecture Diagram</strong>
+          <span class="diagram-zoom-level" id="modal-zoom-percent">100%</span>
+        </div>
+        <div class="diagram-modal-actions">
+          <button class="diagram-ctrl-btn" id="modal-zoom-out" title="Zoom out (–)" aria-label="Zoom out">－</button>
+          <button class="diagram-ctrl-btn" id="modal-zoom-reset" title="Reset view (100%)" aria-label="Reset zoom">⟲ 100%</button>
+          <button class="diagram-ctrl-btn" id="modal-zoom-in" title="Zoom in (+)" aria-label="Zoom in">＋</button>
+          <button class="diagram-ctrl-btn modal-close-btn" id="modal-close" title="Close (Esc)" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div class="diagram-modal-body" id="modal-viewport">
+        <div class="diagram-modal-canvas" id="modal-canvas"></div>
+      </div>
+      <div class="diagram-modal-footer">
+        <span>💡 Drag to pan · Pinch or Mouse Wheel to zoom · Double-click to reset · Esc to close</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
