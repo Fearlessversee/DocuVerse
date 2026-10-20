@@ -920,6 +920,15 @@
   ---------------------------------------------------- */
   let deferredInstallPrompt = null;
 
+  function isAppInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches || 
+           window.matchMedia("(display-mode: fullscreen)").matches ||
+           window.matchMedia("(display-mode: minimal-ui)").matches ||
+           window.navigator.standalone === true ||
+           document.referrer.includes("android-app://") ||
+           localStorage.getItem("docuverse-installed") === "true";
+  }
+
   function setupPwa() {
     // 1. Register Service Worker for offline resilience
     if ("serviceWorker" in navigator) {
@@ -934,11 +943,35 @@
     const topInstallBtn = $("pwa-install-btn");
     const sideInstallBtn = $("sidebar-install-btn");
 
+    function hideInstallButtons() {
+      if (topInstallBtn) { topInstallBtn.hidden = true; topInstallBtn.style.display = "none"; }
+      if (sideInstallBtn) { sideInstallBtn.hidden = true; sideInstallBtn.style.display = "none"; }
+    }
+
+    // If already installed, hide buttons immediately
+    if (isAppInstalled()) {
+      hideInstallButtons();
+    }
+
+    // Modern browser API to check if already installed
+    if ("getInstalledRelatedApps" in navigator) {
+      navigator.getInstalledRelatedApps().then(apps => {
+        if (apps && apps.length > 0) {
+          localStorage.setItem("docuverse-installed", "true");
+          hideInstallButtons();
+        }
+      }).catch(() => {});
+    }
+
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
-      if (topInstallBtn) topInstallBtn.hidden = false;
-      if (sideInstallBtn) sideInstallBtn.hidden = false;
+      if (isAppInstalled()) {
+        hideInstallButtons();
+        return;
+      }
+      if (topInstallBtn) { topInstallBtn.hidden = false; topInstallBtn.style.display = ""; }
+      if (sideInstallBtn) { sideInstallBtn.hidden = false; sideInstallBtn.style.display = ""; }
     });
 
     const triggerInstall = () => {
@@ -946,11 +979,11 @@
       deferredInstallPrompt.prompt();
       deferredInstallPrompt.userChoice.then((choice) => {
         if (choice.outcome === "accepted") {
+          localStorage.setItem("docuverse-installed", "true");
           toast("Installing DocuVerse on your device…");
+          hideInstallButtons();
         }
         deferredInstallPrompt = null;
-        if (topInstallBtn) topInstallBtn.hidden = true;
-        if (sideInstallBtn) sideInstallBtn.hidden = true;
       });
     };
 
@@ -958,9 +991,10 @@
     if (sideInstallBtn) sideInstallBtn.addEventListener("click", triggerInstall);
 
     window.addEventListener("appinstalled", () => {
+      localStorage.setItem("docuverse-installed", "true");
       toast("DocuVerse installed on your home screen!");
-      if (topInstallBtn) topInstallBtn.hidden = true;
-      if (sideInstallBtn) sideInstallBtn.hidden = true;
+      hideInstallButtons();
+      deferredInstallPrompt = null;
     });
   }
 
@@ -1039,8 +1073,7 @@
 
   function checkDeviceRecommendation() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isMobile && !isStandalone) {
+    if (isMobile && !isAppInstalled()) {
       try {
         const dismissed = sessionStorage.getItem("docuverse-mobile-tip");
         if (!dismissed) {

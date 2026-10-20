@@ -1803,3 +1803,15 @@ kbd {
     text-align: center;
   }
 }
+
+/* Hide Install buttons completely when running as installed PWA app */
+@media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  #pwa-install-btn,
+  #sidebar-install-btn,
+  .pwa-install-btn,
+  .sidebar-install-btn {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
