@@ -118,12 +118,11 @@
     return text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-") || "section";
   }
 
-  function readingStats(markdown) {
-    const words = (markdown.match(/\b[\w'-]+\b/g) || []).length;
-    const wordCountEl = $("word-count");
-    const readTimeEl = $("read-time");
-    if (wordCountEl) wordCountEl.textContent = `${words.toLocaleString()} words`;
-    if (readTimeEl) readTimeEl.textContent = `Reading time ${Math.max(1, Math.ceil(words / 220))} min`;
+  function updateFileMetrics(markdown) {
+    const bytes = new Blob([markdown]).size;
+    const kb = Math.max(1, Math.round(bytes / 1024));
+    const sizeBadge = $("file-size-badge");
+    if (sizeBadge) sizeBadge.textContent = kb + " KB";
   }
 
   function drawDocumentList() {
@@ -238,7 +237,7 @@
 
       const icon = document.createElement("span");
       icon.className = "doc-icon";
-      icon.textContent = "✦";
+      icon.textContent = "▤";
 
       const body = document.createElement("span");
       body.textContent = doc.title;
@@ -652,7 +651,7 @@
 
     await enhanceContent();
     buildToc();
-    readingStats(markdown);
+    updateFileMetrics(markdown);
     if ($("table-of-contents") && $("table-of-contents").parentElement) {
       $("table-of-contents").parentElement.scrollTop = 0;
     }
@@ -1246,20 +1245,7 @@
 
   
 
-  function checkDeviceRecommendation() {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && !isAppInstalled()) {
-      try {
-        const dismissed = sessionStorage.getItem("docuverse-mobile-tip");
-        if (!dismissed) {
-          sessionStorage.setItem("docuverse-mobile-tip", "1");
-          setTimeout(() => {
-            toast("📱 Tip: Install DocuVerse as a Web App for distraction-free reading!");
-          }, 3500);
-        }
-      } catch (_) {}
-    }
-  }
+  
 
   window.addEventListener("scroll", updateProgress, { passive: true });
   window.addEventListener("resize", updateProgress);
@@ -1276,6 +1262,5 @@
     setupPwa();
     setupOpenModal();
     await routeAndLoad();
-    checkDeviceRecommendation();
   });
 })();
