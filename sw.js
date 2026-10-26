@@ -1,4 +1,4 @@
-const CACHE_NAME = "docuverse-v2.0";
+const CACHE_NAME = "docuverse-v2.1";
 const STATIC_ASSETS = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   "docs/backend-architecture.md",
   "docs/readme.md",
   "https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js",
+  "https://cdn.jsdelivr.net/npm/marked-footnote@1.4.0/dist/index.umd.js",
   "https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js",
   "https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js",

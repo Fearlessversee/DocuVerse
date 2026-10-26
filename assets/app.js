@@ -146,6 +146,7 @@
         const a = document.createElement("a");
         a.className = "doc-link" + (doc.id === activeDoc.id ? " active" : "");
         a.href = "?doc=" + encodeURIComponent(doc.id);
+        a.title = doc.title;
 
         const icon = document.createElement("span");
         icon.className = "doc-icon";
@@ -234,12 +235,14 @@
       const a = document.createElement("a");
       a.className = "doc-link" + (doc.id === activeDoc.id ? " active" : "");
       a.href = "?doc=" + encodeURIComponent(doc.id);
+      a.title = doc.title;
 
       const icon = document.createElement("span");
       icon.className = "doc-icon";
       icon.textContent = "▤";
 
       const body = document.createElement("span");
+      body.className = "doc-title-text";
       body.textContent = doc.title;
 
       a.append(icon, body);
@@ -277,11 +280,7 @@
         event.preventDefault();
         nav.querySelectorAll(".toc-link").forEach(a => a.classList.remove("active"));
         link.classList.add("active");
-        const target = document.getElementById(id);
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-          history.pushState(null, "", `#${id}`);
-        }
+        scrollToAnchor(id, true);
       });
       nav.append(link);
     });
@@ -299,6 +298,138 @@
         }
       }, { rootMargin: "-90px 0px -72% 0px", threshold: 0 });
       headings.forEach(h => scrollObserver.observe(h));
+    }
+  }
+
+  /* ----------------------------------------------------
+     Footnotes & Smooth Anchor Jump System
+  ---------------------------------------------------- */
+  function findAnchorTarget(targetId) {
+    if (!targetId || !article) return null;
+
+    // 1. Direct ID match
+    let target = document.getElementById(targetId);
+    if (target) return target;
+
+    // 2. Decoded URI
+    const decoded = decodeURIComponent(targetId);
+    target = document.getElementById(decoded);
+    if (target) return target;
+
+    // 3. Name attribute anchor: <a name="...">
+    try {
+      target = article.querySelector(`[name="${CSS.escape(targetId)}"], [name="${CSS.escape(decoded)}"]`);
+      if (target) return target;
+    } catch (_) {}
+
+    // 4. Numbered footnote resolution:
+    // Handles #1, #footnote-1, #fn-1, #fn1, #note-1, #cite_note-1, #footnote-ref-1, etc.
+    const numMatch = targetId.match(/\d+/);
+    if (numMatch) {
+      const num = numMatch[0];
+      const isRefBack = targetId.includes("ref") || targetId.includes("back");
+
+      if (isRefBack) {
+        // Back-link citation reference in content
+        const refCandidates = [
+          `footnote-ref-${num}`,
+          `fnref-${num}`,
+          `fnref${num}`,
+          `ref-${num}`,
+          `fn-ref-${num}`
+        ];
+        for (const c of refCandidates) {
+          target = document.getElementById(c) || article.querySelector(`[name="${c}"]`);
+          if (target) return target;
+        }
+      } else {
+        // Footnote item in footnote/references section
+        const noteCandidates = [
+          `footnote-${num}`,
+          `fn-${num}`,
+          `fn${num}`,
+          `note-${num}`,
+          `cite_note-${num}`,
+          num
+        ];
+        for (const c of noteCandidates) {
+          target = document.getElementById(c) || article.querySelector(`[name="${c}"]`);
+          if (target) return target;
+        }
+
+        // Search list item with matching data-footnote-number
+        target = article.querySelector(`li[data-footnote-number="${num}"]`);
+        if (target) return target;
+
+        // Check inside .footnotes / [data-footnotes] container
+        const footnoteSection = article.querySelector(".footnotes, [data-footnotes]");
+        if (footnoteSection) {
+          const items = footnoteSection.querySelectorAll("li");
+          const idx = parseInt(num, 10) - 1;
+          if (items[idx]) return items[idx];
+        }
+
+        // Check under any Footnotes / References / Notes heading
+        const headings = article.querySelectorAll("h1, h2, h3, h4, h5, h6");
+        for (const h of headings) {
+          const text = h.textContent.toLowerCase();
+          if (text.includes("footnote") || text.includes("reference") || text.includes("citation") || text.includes("note")) {
+            let next = h.nextElementSibling;
+            while (next && !/^H[1-6]$/i.test(next.tagName)) {
+              if (next.tagName === "OL" || next.tagName === "UL") {
+                const items = next.querySelectorAll("li");
+                const idx = parseInt(num, 10) - 1;
+                if (items[idx]) return items[idx];
+              }
+              next = next.nextElementSibling;
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Heading search by text slug
+    const targetSlug = slug(decoded.toLowerCase());
+    const allHeadings = article.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    for (const h of allHeadings) {
+      if (h.id && (h.id === targetId || h.id === decoded || h.id.toLowerCase() === targetSlug)) {
+        return h;
+      }
+      if (slug(h.textContent.toLowerCase()) === targetSlug) {
+        if (!h.id) h.id = targetSlug;
+        return h;
+      }
+    }
+
+    return null;
+  }
+
+  function scrollToAnchor(targetId, updateHistory = true) {
+    if (!targetId) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const target = findAnchorTarget(targetId);
+    if (target) {
+      const headerOffset = 76;
+      const targetTop = target.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth"
+      });
+
+      if (updateHistory) {
+        history.pushState(null, "", `#${encodeURIComponent(targetId)}`);
+      }
+
+      // Visual glow highlight
+      target.classList.remove("anchor-highlight");
+      void target.offsetWidth;
+      target.classList.add("anchor-highlight");
+      setTimeout(() => {
+        target.classList.remove("anchor-highlight");
+      }, 2400);
     }
   }
 
@@ -632,6 +763,42 @@
         });
       });
     }
+
+    // 5. Ensure all headings have IDs for anchor links
+    const usedHeadingIds = new Set();
+    article.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => {
+      let id = h.id || slug(h.textContent);
+      let unique = id, n = 2;
+      while (usedHeadingIds.has(unique) || (unique !== h.id && document.getElementById(unique))) {
+        unique = `${id}-${n++}`;
+      }
+      h.id = unique;
+      usedHeadingIds.add(unique);
+    });
+
+    // 6. Ensure footnote / reference list items have accessible IDs
+    article.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => {
+      const title = h.textContent.toLowerCase();
+      if (title.includes("footnote") || title.includes("reference") || title.includes("citation") || title.includes("note")) {
+        let el = h.nextElementSibling;
+        while (el && !/^H[1-6]$/i.test(el.tagName)) {
+          if (el.tagName === "OL" || el.tagName === "UL") {
+            el.querySelectorAll("li").forEach((li, idx) => {
+              const num = idx + 1;
+              if (!li.id) li.id = `footnote-${num}`;
+              li.setAttribute("data-footnote-number", String(num));
+            });
+          }
+          el = el.nextElementSibling;
+        }
+      }
+    });
+
+    // Also support any element inside .footnotes or [data-footnotes]
+    article.querySelectorAll(".footnotes li, [data-footnotes] li").forEach((li, idx) => {
+      if (!li.id) li.id = `footnote-${idx + 1}`;
+      li.setAttribute("data-footnote-number", String(idx + 1));
+    });
   }
 
   async function renderMarkdown(markdown) {
@@ -639,6 +806,14 @@
       article.innerHTML = '<div class="loading-state"><p>Document libraries did not load. Check your internet connection and reload.</p></div>';
       return;
     }
+
+    if (window.markedFootnote && !window._hasConfiguredMarkedFootnote) {
+      try {
+        window.marked.use(window.markedFootnote());
+        window._hasConfiguredMarkedFootnote = true;
+      } catch (_) {}
+    }
+
     const renderer = new window.marked.Renderer();
     const originalCode = renderer.code.bind(renderer);
     renderer.code = (token) => {
@@ -647,7 +822,10 @@
     };
 
     const html = window.marked.parse(markdown, { gfm: true, breaks: false, renderer });
-    article.innerHTML = window.DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    article.innerHTML = window.DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ["data-footnote-ref", "data-footnote-backref", "data-footnotes", "target"]
+    });
 
     await enhanceContent();
     buildToc();
@@ -655,7 +833,15 @@
     if ($("table-of-contents") && $("table-of-contents").parentElement) {
       $("table-of-contents").parentElement.scrollTop = 0;
     }
-    window.scrollTo({ top: 0, behavior: "instant" });
+
+    // Scroll to anchor if URL hash is present, otherwise scroll to top
+    if (window.location.hash && !window.location.hash.startsWith("#data=") && !window.location.hash.startsWith("#md=")) {
+      setTimeout(() => {
+        scrollToAnchor(decodeURIComponent(window.location.hash.slice(1)), false);
+      }, 70);
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
     updateProgress();
   }
 
@@ -1247,9 +1433,79 @@
 
   
 
+  // Delegated smooth anchor click handler for all in-document links (footnotes, references, sections)
+  if (article) {
+    article.addEventListener("click", (event) => {
+      const link = event.target.closest("a");
+      if (!link) return;
+
+      const rawHref = link.getAttribute("href");
+      if (!rawHref) return;
+
+      // 1. Direct fragment hash link (#footnote-1, #1, #section, etc.)
+      if (rawHref.startsWith("#")) {
+        const rawTarget = rawHref.slice(1);
+        if (!rawTarget) {
+          event.preventDefault();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
+        // If it's a base64 encoded document payload, let router handle it
+        if (rawTarget.startsWith("data=") || rawTarget.startsWith("md=")) {
+          return;
+        }
+
+        event.preventDefault();
+        scrollToAnchor(rawTarget, true);
+        return;
+      }
+
+      // 2. Same-document URL with hash
+      try {
+        const currentUrl = new URL(window.location.href);
+        const linkUrl = new URL(link.href, window.location.href);
+
+        if (
+          linkUrl.origin === currentUrl.origin &&
+          linkUrl.pathname === currentUrl.pathname &&
+          linkUrl.search === currentUrl.search &&
+          linkUrl.hash
+        ) {
+          const hashTarget = linkUrl.hash.slice(1);
+          if (!hashTarget.startsWith("data=") && !hashTarget.startsWith("md=")) {
+            event.preventDefault();
+            scrollToAnchor(hashTarget, true);
+            return;
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
   window.addEventListener("scroll", updateProgress, { passive: true });
   window.addEventListener("resize", updateProgress);
-  window.addEventListener("popstate", () => routeAndLoad());
+  window.addEventListener("popstate", () => {
+    const params = new URLSearchParams(window.location.search);
+    const docParam = params.get("doc") || params.get("url") || params.get("github") || params.get("gist") || "";
+    const activeDocId = activeDoc ? (activeDoc.id || "") : "";
+    const isSameDoc = (docParam && docParam === activeDocId) || (!docParam && !activeDocId && activeDoc);
+
+    const hash = window.location.hash;
+    if (hash && (hash.startsWith("#data=") || hash.startsWith("#md="))) {
+      routeAndLoad();
+      return;
+    }
+
+    if (isSameDoc) {
+      if (hash) {
+        scrollToAnchor(decodeURIComponent(hash.slice(1)), false);
+      }
+      return;
+    }
+
+    routeAndLoad();
+  });
   window.addEventListener("hashchange", () => {
     const hash = window.location.hash;
     if (hash && (hash.startsWith("#data=") || hash.startsWith("#md="))) {
