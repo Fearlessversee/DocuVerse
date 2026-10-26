@@ -1,14 +1,7 @@
 (() => {
-  const DEFAULT_DOC_CONTENT = "<div align=\"center\">\n\n[![⚡ Open Interactive Architecture View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://docuversee.vercel.app/?github=virajverse/DocuVerse/main/docs/backend-architecture.md)\n\n| 📱 **Mobile Users** | 💻 **Laptop / Desktop Users** |\n| :---: | :---: |\n| GitHub mobile shrinks diagrams and cuts off labels. <br> 👉 [**Tap to Open in Mobile Reader / PWA**](https://docuversee.vercel.app/?github=virajverse/DocuVerse/main/docs/backend-architecture.md) | Inspect complex diagrams at up to 300% zoom without clipping. <br> 👉 [**Open Fullscreen Lightbox & Pan/Zoom**](https://docuversee.vercel.app/?github=virajverse/DocuVerse/main/docs/backend-architecture.md) |\n\n---\n\n</div>\n\n# AI Lead Generation & Website Intelligence Agent\n## Improved Backend Architecture — PRD v1.1.0 Alignment\n\n**Status:** Recommended technical blueprint, not yet an approved replacement for the PRD.  \n**Scope:** Phase 1 MVP first; Phase 2–3 boundaries shown separately.\n\n### 1. Design principles\n\n1. Infinity Scraper (port 8000) and SpectraBrowser (port 8002) remain independent MCP engines. Neither directly invokes the other.\n2. The backend orchestrator dispatches jobs and owns workflow state. The LLM proposes decisions; deterministic services enforce authorization, eligibility, suppression and phase restrictions.\n3. PostgreSQL is the source of truth for business records and job state. Queue messages are delivery mechanisms, not the only record of work.\n4. Phase 1 is draft-only. No SMTP/API outbound email sending, even after a draft is approved. Inbound reply capture is allowed.\n5. Use at-least-once job delivery plus idempotent processing; do not assume distributed exactly-once execution.\n6. Store screenshots/HAR/report binaries in object storage; persist metadata, checksums and access-controlled object references in PostgreSQL.\n7. Do not automatically bypass CAPTCHA or anti-bot controls. Browser escalation must comply with the target site's access rules and approved authorization.\n\n### 2. Improved master backend architecture\n\n```mermaid\nflowchart TB\n    UI[Admin Console] --> API[API Gateway / FastAPI]\n    API --> AUTH[Authentication, RBAC, Request Validation]\n    AUTH --> APP[Application Services]\n\n    subgraph APPPLANE[Application and Policy Plane]\n      LEADS[Lead Service]\n      AUDITS[Audit Service]\n      KB[Knowledge Base Service]\n      DRAFTS[Draft and Review Service]\n      POLICY[Eligibility, Suppression and Phase Policy]\n      CONFIG[Brand and Service Configuration]\n    end\n    APP --> LEADS\n    APP --> AUDITS\n    APP --> KB\n    APP --> DRAFTS\n    LEADS --> POLICY\n    AUDITS --> POLICY\n    DRAFTS --> POLICY\n    CONFIG --> POLICY\n\n    subgraph ORCH[Orchestration Plane]\n      BRAIN[AI Agent Brain / Planner]\n      TOOLS[Typed Tool Registry and Adapter Layer]\n      JOBS[Job Lifecycle Manager]\n      OUTBOX[Transactional Outbox Publisher]\n    end\n    LEADS --> BRAIN\n    AUDITS --> BRAIN\n    BRAIN --> TOOLS\n    BRAIN --> JOBS\n    JOBS --> OUTBOX\n\n    OUTBOX --> BROKER[Durable Queue / Broker]\n    BROKER --> INGEST[Lead Ingestion Workers]\n    BROKER --> AUDITWORK[Website Audit Workers]\n    BROKER --> AIWORK[Qualification and Draft Workers]\n    BROKER --> REPLIES[Inbound Reply Capture Workers]\n    BROKER --> DLQ[Dead Letter Queue]\n\n    INGEST --> SI[Infinity Scraper Adapter]\n    SI --> IS[Infinity Scraper MCP :8000]\n    AUDITWORK --> SA[SpectraBrowser Adapter]\n    SA --> SB[SpectraBrowser MCP :8002]\n\n    INGEST --> NORM[Normalize, Validate, Deduplicate]\n    NORM --> SUP[Suppression and Eligibility Gate]\n    SUP --> QUAL[Qualification Service]\n    QUAL --> EVID[Evidence and Approved KB Retrieval]\n    EVID --> GEN[Draft Generator]\n    GEN --> GUARD[Claim and Output Validator]\n    GUARD --> REVIEW[Human Batch Review Queue]\n\n    subgraph DATA[Persistence]\n      PG[(PostgreSQL: business state and job state)]\n      OBJ[(Object Storage: screenshots, HAR, reports)]\n      OBS[(Logs, Metrics, Traces, Audit Events)]\n    end\n\n    LEADS --> PG\n    AUDITS --> PG\n    KB --> PG\n    DRAFTS --> PG\n    JOBS --> PG\n    NORM --> PG\n    SUP --> PG\n    QUAL --> PG\n    EVID --> PG\n    GUARD --> PG\n    REVIEW --> PG\n    AUDITWORK --> OBJ\n    JOBS --> OBS\n    POLICY --> OBS\n    GUARD --> OBS\n\n    REVIEW -->|Phase 1: approved draft stored only| PG\n    REVIEW -.->|Phase 2+: only after rollout approval| SEQ[Sequence Engine]\n    SEQ --> SENDPOL[Pre-send Policy Gate]\n    SENDPOL --> ADAPTER[Email Provider Adapter]\n    ADAPTER --> PROVIDER[Approved Email Provider]\n    PROVIDER --> WEBHOOK[Inbound Webhook]\n    WEBHOOK --> REPLIES\n    REPLIES --> CLASSIFY[Reply Classification]\n    CLASSIFY --> HUMAN[Rep Escalation / Approved Actions]\n    CLASSIFY --> PG\n```\n\n### 3. API and service boundaries\n\nSuggested APIs (implementation proposal; not specified verbatim in the PRD):\n\n- `POST /api/v1/ingestion-jobs` — create an ingestion job.\n- `GET /api/v1/jobs/{job_id}` — inspect job status and progress.\n- `POST /api/v1/audit-jobs` — create an independent website audit.\n- `GET /api/v1/leads/{lead_id}` — retrieve a canonical lead and its provenance.\n- `GET /api/v1/leads/{lead_id}/audits` — list linked audit jobs and reports.\n- `POST /api/v1/drafts/{draft_id}/approve` — approve a draft after server-side validation.\n- `POST /api/v1/drafts/{draft_id}/reject` — reject with a reason.\n- `POST /api/v1/drafts/{draft_id}/edit` — create a new draft version, not overwrite history.\n- `POST /api/v1/webhooks/{provider}` — accept authenticated provider callbacks when a provider is configured.\n\nAll mutating APIs should authenticate the caller, authorize the action, validate the payload, persist an audit event, and use idempotency keys where retries could repeat the operation.\n\n### 4. Lead ingestion and eligibility flow\n\n```mermaid\nflowchart TD\n    A[Admin requests ingestion] --> B[Authorize source and request]\n    B --> C[Persist job and outbox event in one DB transaction]\n    C --> D[Publish job to durable queue]\n    D --> E[Worker calls Infinity Scraper adapter]\n    E --> F[Persist raw payload and source provenance]\n    F --> G[Normalize fields and identity keys]\n    G --> H{Record valid?}\n    H -- No --> INVALID[Record validation outcome]\n    H -- Yes --> I[Deduplicate using DB constraints and normalized keys]\n    I --> J{Duplicate?}\n    J -- Yes --> DUP[Link provenance to existing record / record duplicate outcome]\n    J -- No --> K[Check global suppression and eligibility]\n    K --> L{Suppressed or ineligible?}\n    L -- Yes --> SUPP[Do not qualify or draft; record reason]\n    L -- No --> M[Upsert canonical company/contact records]\n    M --> N{Audit requested?}\n    N -- Yes --> O[Create separate audit job]\n    N -- No --> P[Qualification job]\n    O --> P\n    P --> Q{Score >= 70?}\n    Q -- No --> DISQ[Mark disqualified with reason]\n    Q -- Yes --> R[Queue evidence-grounded draft generation]\n```\n\nRequirements:\n- Preserve the original raw record and source URL/provenance.\n- Normalize domain and email consistently before deduplication.\n- Use database uniqueness constraints as a final concurrency safeguard.\n- Define whether multiple contacts per company are supported before freezing the schema.\n- Suppression checks happen on ingestion and again at review and immediately before any future send.\n\n### 5. Website audit and authorized escalation\n\n```mermaid\nflowchart TD\n    A[Create audit job] --> B[Validate URL, scope and access policy]\n    B --> C[Infinity Scraper fast metadata pass where suitable]\n    C --> D{Need browser evidence or authorized escalation?}\n    D -- No --> H[Normalize findings]\n    D -- Yes --> E[Backend creates SpectraBrowser job]\n    E --> F[Browser inspection in permitted context]\n    F --> G[Capture DOM, screenshots, console, network and metrics]\n    G --> H\n    H --> I[Validate finding schema and provenance]\n    I --> J[Persist findings and metric rows in PostgreSQL]\n    I --> K[Store large artifacts in object storage]\n    J --> L{Evidence complete?}\n    K --> L\n    L -- Yes --> M[COMPLETED]\n    L -- No --> N[PARTIAL with missing-evidence reasons]\n    M --> O[Generate report and optionally link to lead]\n    N --> O\n```\n\nEach finding should ideally include: `audit_job_id`, category, severity, observed timestamp, URL, measurement value and unit (where applicable), evidence summary, artifact reference, and tool/version metadata. Use explicit `COMPLETED`, `PARTIAL`, and `FAILED` job states.\n\n### 6. AI Agent Brain and evidence-grounded drafting\n\n```mermaid\nflowchart TD\n    A[Job event] --> B[Load canonical lead and current state]\n    B --> C[Load approved Knowledge Base items]\n    B --> D[Load relevant audit findings]\n    C --> E[Qualification and reason codes]\n    D --> E\n    E --> F{Eligible and score >= 70?}\n    F -- No --> X[Persist disqualified / blocked outcome]\n    F -- Yes --> G[Planner proposes typed tool calls]\n    G --> H{Tool registered, authorized and phase-allowed?}\n    H -- No --> X\n    H -- Yes --> I[Execute through backend adapter]\n    I --> J[Validate tool result schema]\n    J --> K[Build evidence bundle with stable references]\n    K --> L[Generate structured draft]\n    L --> M[Validate claims against approved KB and evidence]\n    M --> N{All required checks pass?}\n    N -- No --> R[Repair by removing or regenerating unsupported claims]\n    R --> M\n    N -- Yes --> O[Store model/prompt versions and confidence]\n    O --> P[Save PENDING_REVIEW draft]\n    P --> Q[Human review and audit trail]\n```\n\nControls:\n- The LLM cannot directly access credentials, arbitrary SQL, or unrestricted network tools.\n- Every tool has a typed input/output schema, timeout, permission scope and audit record.\n- Evidence IDs and approved Knowledge Base references should be stored with draft claims.\n- A validation failure must not silently pass; after a bounded number of repair attempts, route to human review or mark the draft blocked.\n- The PRD says the AI must not invent capabilities, case studies, prices, discounts, or complaint resolutions.\n\n### 7. Job lifecycle, retry, idempotency and recovery\n\n```mermaid\nstateDiagram-v2\n    [*] --> QUEUED\n    QUEUED --> RUNNING: worker claims job\n    RUNNING --> SUCCEEDED: result committed\n    RUNNING --> RETRY_WAIT: transient retryable failure\n    RETRY_WAIT --> QUEUED: backoff elapsed\n    RUNNING --> FAILED: permanent failure or retry budget exhausted\n    RUNNING --> CANCELLED: authorized cancellation\n    QUEUED --> CANCELLED: authorized cancellation\n    FAILED --> QUEUED: reviewed safe replay\n    SUCCEEDED --> [*]\n    CANCELLED --> [*]\n```\n\nImplementation details:\n- Persist job state, attempt count, timestamps, error category, lease/heartbeat and correlation ID.\n- Use a transactional outbox so a database commit and intent to publish cannot silently diverge.\n- Assume a queue message may be delivered more than once; use idempotency keys and unique constraints.\n- Use bounded exponential backoff with jitter for transient errors; do not retry permanent validation/policy errors.\n- Dead-letter exhausted jobs and alert an operator.\n- Reconcile expired worker leases after crashes.\n- For future external sending, reconcile provider message IDs/status before retrying uncertain sends to avoid duplicate emails.\n\n### 8. Database design improvements\n\nRecommended logical groups:\n\n**Acquisition**\n- `sources`\n- `scraper_jobs`\n- `raw_records`\n- `companies`\n- `contacts`\n- `lead_source_records`\n- `leads` or a clearly defined lead/opportunity entity\n\n**Website intelligence**\n- `website_audit_jobs`\n- `website_audit_findings`\n- `website_audit_metrics`\n- `website_audit_artifacts`\n- `website_audit_reports`\n\n**AI and review**\n- `knowledge_documents`\n- `lead_qualifications`\n- `email_drafts`\n- `draft_evidence_refs` (recommended)\n- `review_tasks`\n- `audit_events`\n\n**Future outreach**\n- `sequences`\n- `sequence_steps`\n- `lead_sequence_state`\n- `messages`\n- `consents`\n- `reply_classifications`\n- `suppression_list`\n\nImportant schema decisions:\n1. The PRD defines `leads.domain` and `leads.contact_email` as unique. A single contact email on the lead row can prevent multiple contacts per company. Prefer separating `companies` and `contacts`, then define the lead/opportunity relationship explicitly.\n2. Suppression should target stable normalized contact identity and define channel scope. Global opt-out must block relevant future outreach across all configured channels.\n3. Store consent evidence with source, timestamp, channel, purpose, and the relevant identity; do not infer consent from merely possessing a phone number or email.\n4. Keep `email_drafts` (reviewable content) separate from `messages` (actual inbound/outbound communication), as the PRD notes.\n5. Define all foreign keys, unique constraints, indexes, retention rules and deletion/rectification behavior before implementation.\n\n### 9. Phase boundaries\n\n**Phase 1**\n- Lead ingestion and deduplication.\n- Optional website audits with evidence.\n- Admin-owned Knowledge Base.\n- Qualification and personalized draft generation.\n- Human batch review.\n- Inbound reply capture only.\n- Hard application-level prohibition on outbound email/WhatsApp sending.\n\n**Phase 2**\n- Enable email delivery only after provider, domain, authentication, consent/suppression checks, rate caps, business-hour limits, kill switch, bounce/complaint auto-pause and unsubscribe tests are approved.\n- Reply classification and sequence transitions with human escalation for pricing, negotiation and complaints.\n\n**Phase 3**\n- FAQ replies grounded only in approved Knowledge Base.\n- WhatsApp automation only with recorded opt-in and official platform integration.\n- Calendar scheduling and expanded role/tenant controls if approved.\n\nThe phase gate must be enforced in backend policy code and tests, not only hidden in the UI or left to the LLM prompt.\n\n### 10. Security and operational requirements\n\n- Admin authentication and role-based authorization for every privileged route.\n- Store API keys in environment-backed secrets management; never log secrets or full authorization headers.\n- Prevent SSRF in URL ingestion and browser navigation: block loopback, link-local, private/internal address ranges, unsafe schemes and redirects to prohibited destinations; revalidate after DNS resolution and redirects.\n- Enforce timeouts, resource limits and per-source rate limits on scraper/browser workers.\n- Sanitize untrusted webpage content before using it as model context; treat website text as data, never as system instructions.\n- Record structured logs with correlation IDs, job IDs, engine versions and safe error details.\n- Monitor throughput, latency, retry rate, dead-letter count, audit completeness, draft rejection rate, and suppression blocks.\n- Test backup/restore and job recovery, not only happy-path throughput.\n- Keep the PRD target of 1,000 validated leads per 24 hours as a load-test requirement; measure separately the number of audits and drafts because they have different resource costs.\n\n### 11. Decisions to freeze before implementation\n\nThe PRD explicitly leaves these open or underdefined:\n1. Outreach brand mapping: Jupsoft vs DigifyNext by service.\n2. Email delivery provider/approach.\n3. Official WhatsApp provider.\n4. Knowledge Base owner and approval process.\n5. Escalation owners.\n6. Bounce, complaint and WhatsApp quality pause thresholds.\n7. Runtime/queue choice: Python/Celery/Redis vs Node.js worker.\n8. Field-level schema for several core and outreach tables.\n9. Whether multiple contacts per company are required.\n\nRecommended default: use one primary worker runtime for the MVP; choose Celery/Redis only after confirming the engines and team fit it. Do not implement automated sending until the related decisions and safety tests are complete.\n\n### 12. Acceptance tests to add\n\n- Duplicate ingestion in concurrent workers produces one canonical identity.\n- A suppression record blocks eligibility and future sending across applicable channels.\n- Phase 1 cannot send even when a draft is approved.\n- Worker crash and redelivery do not create duplicate business records.\n- Outbox recovery republishes events that were committed but not yet published.\n- Retry budget exhaustion creates a dead-letter entry and alert.\n- Every generated factual claim can be traced to approved KB or audit evidence.\n- Invalid/partial audit evidence is labeled correctly and is not presented as a verified finding.\n- SSRF tests cover localhost, private IPs, redirects and DNS rebinding defenses.\n- A provider timeout during future send is reconciled before retry to avoid duplicate dispatch.\n- Load test demonstrates at least 1,000 validated leads per 24 hours under a documented test profile.\n\n---\n**Conclusion:** This is a stronger implementation blueprint aligned to the PRD. It still requires explicit approval of the open decisions and a field-level schema review before it should be treated as the final production specification.\n";
+  const DEFAULT_DOC_CONTENT = "";
 
   const DOCS = [
-    {
-      id: "backend-architecture",
-      title: "Improved Backend Architecture",
-      file: "docs/backend-architecture.md",
-      subtitle: "PRD v1.1.0 · Technical blueprint",
-      content: DEFAULT_DOC_CONTENT
-    },
     {
       id: "readme",
       title: "DocuVerse Specification",
@@ -18,13 +11,97 @@
     }
   ];
 
+  /* ----------------------------------------------------
+     Local Database Layer (Persistent Document Storage)
+  ---------------------------------------------------- */
+  const STORAGE_KEY_DOCS = "docuverse_uploaded_docs_v1";
+  const STORAGE_KEY_ACTIVE = "docuverse_active_doc_id";
+
+  function getUploadedDocs() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_DOCS);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn("DocuVerse getUploadedDocs error:", e);
+      return [];
+    }
+  }
+
+  function persistUploadedDocs(docs) {
+    try {
+      localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(docs));
+      return true;
+    } catch (e) {
+      console.warn("DocuVerse persistUploadedDocs error:", e);
+      toast("Storage warning: Local storage limit reached.");
+      return false;
+    }
+  }
+
+  function saveUploadedDoc(title, filename, content) {
+    const docs = getUploadedDocs();
+    const cleanName = filename || "document.md";
+    const cleanTitle = title || cleanName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+    const id = "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+
+    const newDoc = {
+      id,
+      title: cleanTitle,
+      filename: cleanName,
+      content,
+      createdAt: Date.now(),
+      size: content.length,
+      isUploaded: true
+    };
+
+    const existingIndex = docs.findIndex(d => d.filename === cleanName && d.title === cleanTitle);
+    if (existingIndex >= 0) {
+      docs[existingIndex].content = content;
+      docs[existingIndex].createdAt = Date.now();
+      docs[existingIndex].size = content.length;
+      persistUploadedDocs(docs);
+      return docs[existingIndex];
+    } else {
+      docs.unshift(newDoc);
+      persistUploadedDocs(docs);
+      return newDoc;
+    }
+  }
+
+  function deleteUploadedDoc(docId) {
+    let docs = getUploadedDocs();
+    docs = docs.filter(d => d.id !== docId);
+    persistUploadedDocs(docs);
+    toast("Document removed from library.");
+
+    if (activeDoc && activeDoc.id === docId) {
+      if (docs.length > 0) {
+        loadCustomUploadedDoc(docs[0], true);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_ACTIVE);
+        loadDocument(DOCS[0], true);
+      }
+    } else {
+      drawDocumentList();
+    }
+  }
+
+  function closeSidebarIfMobile() {
+    const sidebar = $("sidebar");
+    const scrim = $("mobile-scrim");
+    if (sidebar) sidebar.classList.remove("open");
+    if (scrim) scrim.classList.remove("visible");
+  }
+
   const $ = (id) => document.getElementById(id);
   const root = document.documentElement;
   const article = $("markdown-document");
 
   let activeDoc = DOCS[0];
   let currentMarkdown = "";
-  let currentFilename = "backend-architecture.md";
+  let currentFilename = "readme.md";
   let toastTimer;
   let scrollObserver;
 
@@ -41,12 +118,11 @@
     return text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-") || "section";
   }
 
-  function readingStats(markdown) {
-    const words = (markdown.match(/\b[\w'-]+\b/g) || []).length;
-    const wordCountEl = $("word-count");
-    const readTimeEl = $("read-time");
-    if (wordCountEl) wordCountEl.textContent = `${words.toLocaleString()} words`;
-    if (readTimeEl) readTimeEl.textContent = `Reading time ${Math.max(1, Math.ceil(words / 220))} min`;
+  function updateFileMetrics(markdown) {
+    const bytes = new Blob([markdown]).size;
+    const kb = Math.max(1, Math.round(bytes / 1024));
+    const sizeBadge = $("file-size-badge");
+    if (sizeBadge) sizeBadge.textContent = kb + " KB";
   }
 
   function drawDocumentList() {
@@ -54,10 +130,110 @@
     if (!container) return;
     container.replaceChildren();
 
+    const uploadedDocs = getUploadedDocs();
+
+    // Section 1: Uploaded Documents in Mobile/Desktop Left Sidebar
+    if (uploadedDocs.length > 0) {
+      const header = document.createElement("div");
+      header.className = "side-subgroup-label";
+      header.innerHTML = '<span>UPLOADED DOCS</span> <span class="side-badge">' + uploadedDocs.length + '</span>';
+      container.append(header);
+
+      uploadedDocs.forEach(doc => {
+        const itemRow = document.createElement("div");
+        itemRow.className = "doc-item-row" + (doc.id === activeDoc.id ? " active" : "");
+
+        const a = document.createElement("a");
+        a.className = "doc-link" + (doc.id === activeDoc.id ? " active" : "");
+        a.href = "?doc=" + encodeURIComponent(doc.id);
+
+        const icon = document.createElement("span");
+        icon.className = "doc-icon";
+        icon.textContent = "📄";
+
+        const info = document.createElement("span");
+        info.className = "doc-info-wrap";
+
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "doc-item-title";
+        titleSpan.textContent = doc.title;
+
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "doc-item-meta";
+        metaSpan.textContent = "Uploaded · Local";
+
+        info.append(titleSpan, metaSpan);
+        a.append(icon, info);
+
+        a.addEventListener("click", async (event) => {
+          event.preventDefault();
+          await loadCustomUploadedDoc(doc, true);
+          closeSidebarIfMobile();
+        });
+
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "doc-delete-btn";
+        delBtn.title = "Delete this document from local library";
+        delBtn.setAttribute("aria-label", "Delete document");
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (confirm('Remove "' + doc.title + '" from your saved documents?')) {
+            deleteUploadedDoc(doc.id);
+          }
+        });
+
+        itemRow.append(a, delBtn);
+        container.append(itemRow);
+      });
+
+      // Shortcut to upload another document from sidebar
+      const quickUpload = document.createElement("button");
+      quickUpload.type = "button";
+      quickUpload.className = "sidebar-upload-shortcut";
+      quickUpload.innerHTML = '<span>＋</span> Upload Another .md';
+      quickUpload.addEventListener("click", () => {
+        const picker = $("local-file-picker");
+        if (picker) picker.click();
+      });
+      container.append(quickUpload);
+
+      const divider = document.createElement("div");
+      divider.className = "side-divider";
+      container.append(divider);
+    } else {
+      // Empty uploaded docs state
+      const emptyBox = document.createElement("div");
+      emptyBox.className = "sidebar-empty-box";
+      emptyBox.innerHTML = '<div class="empty-icon">📁</div><p>No uploaded docs yet.</p><button type="button" class="sidebar-upload-btn-empty" id="sidebar-choose-btn"><span>＋</span> Upload .md File</button>';
+      container.append(emptyBox);
+
+      const emptyBtn = emptyBox.querySelector("#sidebar-choose-btn");
+      if (emptyBtn) {
+        emptyBtn.addEventListener("click", () => {
+          const picker = $("local-file-picker");
+          if (picker) picker.click();
+        });
+      }
+
+      const divider = document.createElement("div");
+      divider.className = "side-divider";
+      container.append(divider);
+    }
+
+    // Section 2: Standard DocuVerse Guide
+    const guideHeader = document.createElement("div");
+    guideHeader.className = "side-subgroup-label";
+    guideHeader.textContent = "DOCUVERSE GUIDE";
+    container.append(guideHeader);
+
     DOCS.forEach(doc => {
       const a = document.createElement("a");
-      a.className = `doc-link${doc.id === activeDoc.id ? " active" : ""}`;
-      a.href = `?doc=${encodeURIComponent(doc.id)}`;
+      a.className = "doc-link" + (doc.id === activeDoc.id ? " active" : "");
+      a.href = "?doc=" + encodeURIComponent(doc.id);
 
       const icon = document.createElement("span");
       icon.className = "doc-icon";
@@ -69,12 +245,8 @@
       a.append(icon, body);
       a.addEventListener("click", async (event) => {
         event.preventDefault();
-        await loadDocument(doc, false);
-        history.pushState({}, "", a.href);
-        const sidebar = $("sidebar");
-        const scrim = $("mobile-scrim");
-        if (sidebar) sidebar.classList.remove("open");
-        if (scrim) scrim.classList.remove("visible");
+        await loadDocument(doc, true);
+        closeSidebarIfMobile();
       });
       container.append(a);
     });
@@ -479,7 +651,7 @@
 
     await enhanceContent();
     buildToc();
-    readingStats(markdown);
+    updateFileMetrics(markdown);
     if ($("table-of-contents") && $("table-of-contents").parentElement) {
       $("table-of-contents").parentElement.scrollTop = 0;
     }
@@ -565,22 +737,46 @@
   /* ----------------------------------------------------
      Document Loading & Rendering Engine
   ---------------------------------------------------- */
-  async function renderCustomMarkdown(content, title, filename) {
-    currentMarkdown = content;
-    currentFilename = filename || "document.md";
-    activeDoc = { id: "custom", title: title || "Custom Document", file: currentFilename, content };
+  async function loadCustomUploadedDoc(doc, changeHistory = true) {
+    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true };
+    currentMarkdown = doc.content;
+    currentFilename = doc.filename;
 
     const crumbEl = $("crumb-title");
-    if (crumbEl) crumbEl.textContent = title || "Custom Document";
+    if (crumbEl) crumbEl.textContent = doc.title;
 
-    // Mark active in sidebar
-    const container = $("document-list");
-    if (container) {
-      container.querySelectorAll(".doc-link").forEach(l => l.classList.remove("active"));
+    drawDocumentList();
+    await renderMarkdown(currentMarkdown);
+    document.title = doc.title + " — DocuVerse by virajverse";
+
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE, doc.id);
+    } catch (_) {}
+
+    if (changeHistory) {
+      history.pushState({}, "", "?doc=" + encodeURIComponent(doc.id));
+    }
+  }
+
+  async function renderCustomMarkdown(content, title, filename, autoSave = false) {
+    currentMarkdown = content;
+    currentFilename = filename || "document.md";
+    const docTitle = title || "Custom Document";
+
+    if (autoSave) {
+      const saved = saveUploadedDoc(docTitle, currentFilename, content);
+      await loadCustomUploadedDoc(saved, true);
+      return;
     }
 
+    activeDoc = { id: "custom", title: docTitle, file: currentFilename, content };
+
+    const crumbEl = $("crumb-title");
+    if (crumbEl) crumbEl.textContent = docTitle;
+
+    drawDocumentList();
     await renderMarkdown(currentMarkdown);
-    document.title = `${title || "Custom Document"} — DocuVerse by virajverse`;
+    document.title = docTitle + " — DocuVerse by virajverse";
   }
 
   async function loadDocument(doc, changeList = false) {
@@ -675,15 +871,46 @@
     // 4. Query param ?gist=
     const gistParam = params.get("gist");
     if (gistParam) {
-      const gistUrl = gistParam.startsWith("http") ? gistParam : `https://gist.github.com/${gistParam}`;
+      const gistUrl = gistParam.startsWith("http") ? gistParam : ("https://gist.github.com/" + gistParam);
       await loadFromRemoteUrl(gistUrl, "GitHub Gist");
       return;
     }
 
-    // 5. Query param ?doc=
-    const docId = params.get("doc") || DOCS[0].id;
-    const matched = DOCS.find(d => d.id === docId) || DOCS[0];
-    await loadDocument(matched);
+    // 5. Query param ?doc= or Local Database check
+    const docId = params.get("doc");
+    const uploadedDocs = getUploadedDocs();
+
+    if (docId) {
+      const customMatch = uploadedDocs.find(d => d.id === docId);
+      if (customMatch) {
+        await loadCustomUploadedDoc(customMatch, false);
+        return;
+      }
+      const sampleMatch = DOCS.find(d => d.id === docId);
+      if (sampleMatch) {
+        await loadDocument(sampleMatch, false);
+        return;
+      }
+    }
+
+    // Check last active doc from local database
+    const lastActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE);
+    if (lastActiveId) {
+      const customMatch = uploadedDocs.find(d => d.id === lastActiveId);
+      if (customMatch) {
+        await loadCustomUploadedDoc(customMatch, false);
+        return;
+      }
+    }
+
+    // If user has any uploaded docs, load the latest uploaded one!
+    if (uploadedDocs.length > 0) {
+      await loadCustomUploadedDoc(uploadedDocs[0], false);
+      return;
+    }
+
+    // Default: Clean DocuVerse Specification
+    await loadDocument(DOCS[0], false);
   }
 
   function updateProgress() {
@@ -818,10 +1045,10 @@
         reader.onload = async (event) => {
           const text = event.target.result;
           hideModal();
-          history.pushState({}, "", window.location.pathname);
           const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-          await renderCustomMarkdown(text, cleanTitle, file.name);
-          toast(`Loaded: ${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`);
+          const savedDoc = saveUploadedDoc(cleanTitle, file.name, text);
+          await loadCustomUploadedDoc(savedDoc, true);
+          toast("Uploaded & saved to Library: " + savedDoc.title);
         };
         reader.onerror = () => {
           toast("Failed to read local file.");
@@ -836,7 +1063,7 @@
       chip.addEventListener("click", async () => {
         const sampleKey = chip.dataset.sample;
         hideModal();
-        const doc = DOCS.find(d => d.id === (sampleKey === "readme" ? "readme" : "backend-architecture")) || DOCS[0];
+        const doc = DOCS.find(d => d.id === "readme") || DOCS[0];
         history.pushState({}, "", `?doc=${doc.id}`);
         await loadDocument(doc);
       });
@@ -850,9 +1077,9 @@
         const text = pasteInput.value.trim();
         if (!text) return;
         hideModal();
-        history.pushState({}, "", window.location.pathname);
-        await renderCustomMarkdown(text, "Pasted Markdown Document", "document.md");
-        toast("Rendered Markdown document!");
+        const savedDoc = saveUploadedDoc("Pasted Document", "pasted-document.md", text);
+        await loadCustomUploadedDoc(savedDoc, true);
+        toast("Pasted document saved to Library!");
       });
     }
 
@@ -1006,8 +1233,9 @@
           const file = await fileHandle.getFile();
           const text = await file.text();
           const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-          await renderCustomMarkdown(text, cleanTitle, file.name);
-          toast(`Opened: ${file.name}`);
+          const savedDoc = saveUploadedDoc(cleanTitle, file.name, text);
+          await loadCustomUploadedDoc(savedDoc, true);
+          toast("Opened & saved: " + file.name);
         } catch (err) {
           console.warn("DocuVerse file handler error:", err);
         }
@@ -1015,93 +1243,9 @@
     }
   }
 
-  /* ----------------------------------------------------
-     GitHub README Badge Generator Modal
-  ---------------------------------------------------- */
-  function setupBadgeModal() {
-    const badgeModal = $("badge-modal");
-    const badgeBtn = $("badge-button");
-    const closeBtn = $("badge-modal-close");
-    const backdrop = $("badge-modal-backdrop");
-    const codeArea = $("badge-markdown-code");
-    const copyBtn = $("copy-badge-btn");
+  
 
-    if (!badgeModal) return;
-
-    function generateSnippet() {
-      const params = new URLSearchParams(window.location.search);
-      const gh = params.get("github");
-      const urlParam = params.get("url");
-
-      let targetUrl = "https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md";
-      if (gh) {
-        targetUrl = `https://docuversee.vercel.app/?github=${encodeURIComponent(gh)}`;
-      } else if (urlParam) {
-        targetUrl = `https://docuversee.vercel.app/?url=${encodeURIComponent(urlParam)}`;
-      } else if (activeDoc && activeDoc.file) {
-        targetUrl = `https://docuversee.vercel.app/?github=virajverse/DocuVerse/main/${activeDoc.file}`;
-      }
-
-      return `<div align="center">
-
-[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](${targetUrl})
-
-| 📱 **Mobile Users** | 💻 **Laptop / Desktop Users** |
-| :---: | :---: |
-| GitHub mobile shrinks diagrams & labels. <br> 👉 [**Tap to Open in Mobile Reader / PWA**](${targetUrl}) | Inspect complex diagrams at up to 300% zoom without clipping. <br> 👉 [**Open Fullscreen Lightbox & Pan/Zoom**](${targetUrl}) |
-
----
-
-</div>`;
-    }
-
-    function showModal() {
-      if (codeArea) codeArea.value = generateSnippet();
-      badgeModal.hidden = false;
-      document.body.style.overflow = "hidden";
-    }
-
-    function hideModal() {
-      badgeModal.hidden = true;
-      document.body.style.overflow = "";
-    }
-
-    if (badgeBtn) badgeBtn.addEventListener("click", showModal);
-    if (closeBtn) closeBtn.addEventListener("click", hideModal);
-    if (backdrop) backdrop.addEventListener("click", hideModal);
-
-    if (copyBtn && codeArea) {
-      copyBtn.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(codeArea.value);
-          toast("Badge snippet copied to clipboard! Paste it at line 1 of your README.");
-        } catch (_) {
-          codeArea.select();
-          document.execCommand("copy");
-          toast("Badge snippet copied to clipboard!");
-        }
-      });
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !badgeModal.hidden) hideModal();
-    });
-  }
-
-  function checkDeviceRecommendation() {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && !isAppInstalled()) {
-      try {
-        const dismissed = sessionStorage.getItem("docuverse-mobile-tip");
-        if (!dismissed) {
-          sessionStorage.setItem("docuverse-mobile-tip", "1");
-          setTimeout(() => {
-            toast("📱 Tip: Install DocuVerse as a Web App for distraction-free reading!");
-          }, 3500);
-        }
-      } catch (_) {}
-    }
-  }
+  
 
   window.addEventListener("scroll", updateProgress, { passive: true });
   window.addEventListener("resize", updateProgress);
@@ -1117,8 +1261,6 @@
     enforceLightTheme();
     setupPwa();
     setupOpenModal();
-    setupBadgeModal();
     await routeAndLoad();
-    checkDeviceRecommendation();
   });
 })();

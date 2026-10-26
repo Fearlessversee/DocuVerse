@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="230" viewBox="0 0 900 230" role="img" aria-labelledby="title desc">
+  <title id="title">DocuVerse</title>
+  <desc id="desc">DocuVerse logo: an indigo app icon containing a white document canvas and a cyan connected-node architecture graph, alongside the DocuVerse wordmark.</desc>
+  <defs>
+    <linearGradient id="dv-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="dv-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <g id="mark" transform="translate(20 20)">
+    <rect width="190" height="190" rx="47" fill="url(#dv-bg)"/>
+    <rect x="48" y="33" width="94" height="124" rx="13" fill="none" stroke="#ffffff" stroke-width="8"/>
+    <path d="M70 57h50M70 132h50" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+    <path d="M95 81 72 111M95 81l27 30" fill="none" stroke="url(#dv-accent)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="95" cy="79" r="11" fill="#38bdf8"/>
+    <circle cx="70" cy="114" r="9" fill="#ffffff"/>
+    <circle cx="124" cy="114" r="9" fill="#06b6d4"/>
+  </g>
+  <text x="245" y="121" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="80" font-weight="750" letter-spacing="-3.1">
+    <tspan fill="#111827">Docu</tspan><tspan fill="#0ea5e9">Verse</tspan>
+  </text>
+  <text x="249" y="166" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="21" font-weight="500" letter-spacing="2.1" fill="#64748b">READ · EXPLORE · UNDERSTAND</text>
+</svg>

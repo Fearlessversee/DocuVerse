@@ -45,6 +45,8 @@
 
   <title>DocuVerse — Zero-Backend Markdown & Mermaid Showcase</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="assets/favicon-16x16.png" type="image/png" sizes="16x16">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -67,39 +69,33 @@
   <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="Document navigation">
       <a class="brand" href="./" aria-label="DocuVerse home">
-        <span class="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 3.75h10l7 7V27a1.25 1.25 0 0 1-1.25 1.25H8A1.25 1.25 0 0 1 6.75 27V5A1.25 1.25 0 0 1 8 3.75Z"/><path d="M18 4v7h7M11 17h10M11 21h10"/></svg></span>
-        <span><strong>DocuVerse</strong><small>by virajverse</small></span>
+        <img src="assets/favicon.svg" alt="DocuVerse" class="brand-logo-img">
+        <span><strong>Docu<span class="brand-accent">Verse</span></strong><small>READ · EXPLORE · UNDERSTAND</small></span>
       </a>
       <div class="side-label">LIBRARY</div>
       <nav class="document-list" id="document-list" aria-label="Documents"></nav>
       <div class="sidebar-spacer"></div>
-      <button class="sidebar-install-btn" id="sidebar-install-btn" hidden type="button"><span>📲</span> Install DocuVerse App</button>
-      <div class="side-card">
-        <div class="side-card-icon">✦</div>
-        <strong>Readable by design</strong>
-        <p>Markdown, Mermaid diagrams, code blocks and headings in one clean view.</p>
-      </div>
+      <button class="sidebar-install-btn" id="sidebar-install-btn" hidden type="button"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Install App</button>
       <div class="sidebar-foot">DocuVerse v1.1 · by <a href="https://github.com/virajverse" target="_blank" rel="noopener">virajverse</a></div>
     </aside>
 
     <main class="main-area">
       <header class="topbar">
         <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Open navigation" title="Open navigation">☰</button>
-        <div class="breadcrumbs"><span>Library</span><span class="crumb-separator">/</span><strong id="crumb-title">Backend Architecture</strong></div>
+        <div class="breadcrumbs"><span>Library</span><span class="crumb-separator">/</span><strong id="crumb-title">DocuVerse Guide</strong></div>
         <div class="top-actions">
-          <button class="pwa-install-btn" id="pwa-install-btn" hidden type="button" title="Install DocuVerse App on mobile or desktop"><span class="btn-icon">📲</span> Install App</button>
-          <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL or GitHub"><span class="btn-icon">＋</span> Open URL</button>
+          <button class="pwa-install-btn" id="pwa-install-btn" hidden type="button" title="Install DocuVerse App on mobile or desktop"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Install App</button>
+          <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL or GitHub"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Open URL</button>
           <label class="search-box" for="doc-search"><span class="search-icon">⌕</span><input id="doc-search" type="search" placeholder="Find in document…" autocomplete="off"><kbd>Ctrl K</kbd></label>
         </div>
       </header>
 
       <section class="document-toolbar" aria-label="Document actions">
-        <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="read-time">Reading time —</span><span class="meta-dot">·</span><span id="word-count">— words</span></div>
+        <div class="doc-meta"><span class="file-pill"><span class="file-dot"></span> MARKDOWN</span><span id="file-size-badge" class="meta-size">— KB</span></div>
         <div class="toolbar-actions">
-          <button class="secondary-button" id="open-local-button" title="Open any .md file from phone or computer storage"><span>📁</span> Open Local .md</button>
-          <button class="secondary-button" id="badge-button" title="Get 1-click badge & banner for your GitHub README"><span>⚡</span> Get README Badge</button>
-          <button class="secondary-button" id="download-button" title="Download Markdown file"><span>↓</span> Download .md</button>
-          <button class="primary-button" id="copy-link-button" title="Share document link"><span>↗</span> Share document</button>
+          
+          <button class="secondary-button" id="download-button" title="Download Markdown file"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download</button>
+          <button class="primary-button" id="copy-link-button" title="Share document link"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share Link</button>
         </div>
       </section>
 
@@ -115,7 +111,7 @@
           <div class="reading-progress"><div class="progress-heading"><span>Reading progress</span><strong id="progress-label">0%</strong></div><div class="progress-track"><span id="progress-bar"></span></div></div>
         </aside>
       </div>
-      <footer class="page-footer"><span>Rendered with <a href="https://github.com/virajverse" target="_blank" rel="noopener"><strong>DocuVerse</strong></a> by <strong>virajverse</strong></span><span><span class="footer-status-dot"></span> Interactive Mermaid viewer</span><a href="https://github.com/virajverse" target="_blank" rel="noopener">GitHub</a></footer>
+      <footer class="page-footer"><span>DocuVerse by <a href="https://github.com/virajverse" target="_blank" rel="noopener"><strong>virajverse</strong></a></span><span>Markdown &amp; Mermaid Viewer</span><a href="https://github.com/virajverse/DocuVerse" target="_blank" rel="noopener">GitHub</a></footer>
     </main>
   </div>
   <div class="mobile-scrim" id="mobile-scrim"></div>
@@ -127,7 +123,7 @@
     <div class="open-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
-          <span class="open-modal-icon">✦</span>
+          <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
           <strong>Open Markdown Document</strong>
         </div>
         <button class="diagram-ctrl-btn modal-close-btn" id="open-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
@@ -136,9 +132,9 @@
         <div class="local-file-section">
           <input type="file" id="local-file-picker" accept=".md,.markdown,.mdown,.txt" style="display:none">
           <button type="button" class="primary-button local-file-btn" id="choose-local-file-btn">
-            <span>📁</span> Choose .md File from Phone or Computer
+            <svg class="btn-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Choose .md File from Device
           </button>
-          <p class="offline-badge-text">⚡ <strong>100% Offline & Private</strong> — File is rendered client-side in memory and never uploaded to any server.</p>
+          <p class="offline-badge-text">Client-side rendering — document is rendered directly in browser memory.</p>
         </div>
 
         <div class="section-divider"><span>OR LOAD BY URL</span></div>
@@ -150,7 +146,6 @@
         </div>
         <div class="quick-examples">
           <span class="examples-label">Quick samples:</span>
-          <button type="button" class="sample-chip" data-sample="backend">Architecture Blueprint</button>
           <button type="button" class="sample-chip" data-sample="readme">DocuVerse Specification</button>
         </div>
         <details class="paste-details">
@@ -163,32 +158,6 @@
       </div>
     </div>
   </div>
-
-  <!-- GitHub README Badge Modal -->
-  <div class="open-modal" id="badge-modal" hidden role="dialog" aria-modal="true" aria-label="Get GitHub README Badge">
-    <div class="open-modal-backdrop" id="badge-modal-backdrop"></div>
-    <div class="open-modal-card">
-      <div class="open-modal-header">
-        <div class="open-modal-title">
-          <span class="open-modal-icon">⚡</span>
-          <strong>1-Click DocuVerse Badge for GitHub</strong>
-        </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="badge-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
-      </div>
-      <div class="open-modal-body">
-        <p class="tab-description">Paste this at the top of your GitHub <code>README.md</code> or PRD. Mobile readers get 1-tap mobile reader, laptop readers get deep pan & zoom:</p>
-        <div class="badge-preview-box">
-          <img src="https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white" alt="DocuVerse Badge Preview">
-        </div>
-        <div class="badge-code-wrap">
-          <label for="badge-markdown-code"><strong>Markdown Snippet (Mobile + Desktop Smart Table):</strong></label>
-          <textarea id="badge-markdown-code" readonly rows="7"></textarea>
-        </div>
-        <div class="modal-footer-actions">
-          <button type="button" class="primary-button" id="copy-badge-btn"><span>📋</span> Copy Snippet to Clipboard</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Mermaid Interactive Zoom Modal -->
