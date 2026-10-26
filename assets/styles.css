@@ -129,12 +129,16 @@ a:hover {
   z-index: 40;
   inset: 0 auto 0 0;
   width: 254px;
+  max-width: 254px;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
   box-shadow: 1px 0 10px rgba(0, 0, 0, 0.02);
   padding: 24px 16px 16px;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .brand {
@@ -195,8 +199,13 @@ a:hover {
 }
 
 .document-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .doc-link {
@@ -211,6 +220,16 @@ a:hover {
   font-weight: 500;
   line-height: 1.4;
   transition: all 0.15s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.doc-link > span:not(.doc-icon) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .doc-link:hover {
@@ -1851,11 +1870,18 @@ kbd {
   align-items: center;
   border-radius: 8px;
   transition: background 0.15s ease;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .doc-item-row .doc-link {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  max-width: calc(100% - 28px);
 }
 
 .doc-item-row.active {
@@ -1872,11 +1898,14 @@ kbd {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-align: left;
 }
 
 .doc-item-title {
+  display: block;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1885,6 +1914,11 @@ kbd {
 }
 
 .doc-item-meta {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   color: var(--muted);
   font-weight: 500;
@@ -1892,11 +1926,17 @@ kbd {
 }
 
 .doc-delete-btn {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.4;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 0;
   font-size: 11px;
   color: var(--muted);
   border-radius: 6px;
@@ -1919,6 +1959,8 @@ kbd {
   justify-content: center;
   gap: 6px;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 6px;
   padding: 8px 10px;
   background: var(--panel-2);
@@ -2018,4 +2060,117 @@ kbd {
   background: linear-gradient(135deg, #38bdf8, #0ea5e9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* ----------------------------------------------------
+   Footnotes, Citations & Smooth Anchor Jump System
+---------------------------------------------------- */
+.markdown-document [id] {
+  scroll-margin-top: 90px;
+}
+
+.markdown-document sup {
+  font-size: 0.72em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+  top: -0.5em;
+}
+
+.markdown-document sup a,
+.markdown-document a[data-footnote-ref],
+.markdown-document a[data-footnote-backref] {
+  text-decoration: none !important;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+/* Footnote reference badge (e.g., [1], [2], [3]) */
+.markdown-document sup a,
+.markdown-document a[data-footnote-ref],
+.markdown-document .footnote-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid rgba(79, 70, 229, 0.22);
+  border-radius: 999px;
+  margin: 0 2px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.markdown-document sup a:hover,
+.markdown-document a[data-footnote-ref]:hover,
+.markdown-document .footnote-ref:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.markdown-document a[data-footnote-backref] {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 4px;
+  text-decoration: none !important;
+}
+
+.markdown-document a[data-footnote-backref]:hover {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.markdown-document .footnotes,
+.markdown-document [data-footnotes] {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 0.9em;
+  color: var(--muted-2);
+}
+
+.markdown-document .footnotes h2,
+.markdown-document [data-footnotes] h2 {
+  font-size: 1.15em;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.markdown-document .footnotes ol,
+.markdown-document [data-footnotes] ol {
+  padding-left: 24px;
+}
+
+.markdown-document .footnotes li,
+.markdown-document [data-footnotes] li {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* Highlight target anchor on click */
+@keyframes anchorGlow {
+  0% {
+    background-color: rgba(99, 102, 241, 0.28);
+    box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.18);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.anchor-highlight {
+  animation: anchorGlow 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 6px;
 }
