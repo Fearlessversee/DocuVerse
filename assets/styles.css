@@ -2174,3 +2174,112 @@ kbd {
   animation: anchorGlow 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   border-radius: 6px;
 }
+
+
+/* --------------------------------------------------
+   Share to Cloud Modal & Expiration Countdown Styles
+---------------------------------------------------- */
+.share-modal-card {
+  max-width: 480px;
+}
+
+.share-expiry-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.expiry-radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.expiry-radio-card input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.expiry-radio-card:hover {
+  border-color: var(--accent);
+}
+
+.expiry-radio-card.active {
+  border-color: var(--accent);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.expiry-radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expiry-radio-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.expiry-radio-desc {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.share-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cloud-expiry-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 12px;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.cloud-expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--accent-strong, #1d4ed8);
+}
+
+.cloud-expiry-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.expired-document-card {
+  padding: 56px 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  margin: 32px 0;
+}
+
+.expired-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+}
