@@ -172,7 +172,7 @@
 
         const metaSpan = document.createElement("span");
         metaSpan.className = "doc-item-meta";
-        metaSpan.textContent = doc.cloudId ? "Uploaded · Cloud Synced" : "Uploaded · Local";
+        metaSpan.textContent = (doc.isPermanent || (doc.cloudId && doc.expiresAt === 0)) ? "Uploaded · Permanent Cloud" : (doc.cloudId ? "Uploaded · Cloud Synced" : "Uploaded · Local");
 
         info.append(titleSpan, metaSpan);
         a.append(icon, info);
@@ -935,7 +935,7 @@
      Document Loading & Rendering Engine
   ---------------------------------------------------- */
   async function loadCustomUploadedDoc(doc, changeHistory = true) {
-    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true, cloudId: doc.cloudId || null, expiresAt: doc.expiresAt || 0 };
+    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true, cloudId: doc.cloudId || null, expiresAt: doc.expiresAt || 0, isPermanent: doc.isPermanent || false, userId: doc.userId || null };
     currentMarkdown = doc.content;
     currentFilename = doc.filename;
 
@@ -1041,20 +1041,150 @@
     }
   }
 
-      function showShareModal() {
-    const modal = $("share-modal");
+      /* ----------------------------------------------------
+     Appwrite Auth Layer & User Session Management
+  ---------------------------------------------------- */
+  let appwriteClient = null;
+  let appwriteAccount = null;
+  let currentUser = null;
+
+  function initAppwriteAuth() {
+    if (typeof window.Appwrite !== "undefined" && window.Appwrite.Client) {
+      try {
+        appwriteClient = new window.Appwrite.Client()
+          .setEndpoint(APPWRITE_CONFIG.endpoint)
+          .setProject(APPWRITE_CONFIG.projectId);
+        appwriteAccount = new window.Appwrite.Account(appwriteClient);
+      } catch (err) {
+        console.warn("DocuVerse Appwrite SDK init error:", err);
+      }
+    }
+  }
+
+  async function checkUserSession() {
+    if (!appwriteAccount) initAppwriteAuth();
+    if (!appwriteAccount) return;
+
+    try {
+      currentUser = await appwriteAccount.get();
+      updateUserAuthUI();
+    } catch (_) {
+      currentUser = null;
+      updateUserAuthUI();
+    }
+  }
+
+  function updateUserAuthUI() {
+    const signinBtn = $("auth-signin-btn");
+    const userBtn = $("user-profile-btn");
+    const userDisplayName = $("user-display-name");
+    const permDescText = $("perm-desc-text");
+
+    if (currentUser) {
+      if (signinBtn) signinBtn.hidden = true;
+      if (userBtn) userBtn.hidden = false;
+      const name = currentUser.name || currentUser.email.split("@")[0] || "Account";
+      if (userDisplayName) userDisplayName.textContent = name;
+      if (permDescText) permDescText.textContent = "Never expires · Saved to account";
+
+      const profileName = $("profile-user-name");
+      const profileEmail = $("profile-user-email");
+      const profileInitials = $("profile-avatar-initials");
+      if (profileName) profileName.textContent = currentUser.name || "DocuVerse User";
+      if (profileEmail) profileEmail.textContent = currentUser.email;
+      if (profileInitials) {
+        const initial = (currentUser.name || currentUser.email || "U").charAt(0).toUpperCase();
+        profileInitials.textContent = initial;
+      }
+    } else {
+      if (signinBtn) signinBtn.hidden = false;
+      if (userBtn) userBtn.hidden = true;
+      if (permDescText) permDescText.textContent = "Never expires · (Sign In Required)";
+    }
+  }
+
+  /* Modals Helpers */
+  function showModalEl(modal) {
     if (modal) {
       modal.hidden = false;
       document.body.style.overflow = "hidden";
     }
   }
 
-  function hideShareModal() {
-    const modal = $("share-modal");
+  function hideModalEl(modal) {
     if (modal) {
       modal.hidden = true;
       document.body.style.overflow = "";
     }
+  }
+
+  function showShareModal() {
+    showModalEl($("share-modal"));
+  }
+
+  function hideShareModal() {
+    hideModalEl($("share-modal"));
+  }
+
+  function showAuthModal(initialTab = "signin") {
+    hideForgotModal();
+    hideProfileModal();
+    const modal = $("auth-modal");
+    if (!modal) return;
+
+    const signinForm = $("signin-form");
+    const signupForm = $("signup-form");
+    const tabSignin = $("tab-btn-signin");
+    const tabSignup = $("tab-btn-signup");
+    const headerText = $("auth-modal-header-text");
+    const signinErr = $("signin-error");
+    const signupErr = $("signup-error");
+
+    if (signinErr) signinErr.hidden = true;
+    if (signupErr) signupErr.hidden = true;
+
+    if (initialTab === "signup") {
+      if (signinForm) signinForm.hidden = true;
+      if (signupForm) signupForm.hidden = false;
+      if (tabSignin) tabSignin.classList.remove("active");
+      if (tabSignup) tabSignup.classList.add("active");
+      if (headerText) headerText.textContent = "Create Free Account";
+    } else {
+      if (signinForm) signinForm.hidden = false;
+      if (signupForm) signupForm.hidden = true;
+      if (tabSignin) tabSignin.classList.add("active");
+      if (tabSignup) tabSignup.classList.remove("active");
+      if (headerText) headerText.textContent = "Sign In to DocuVerse";
+    }
+    showModalEl(modal);
+  }
+
+  function hideAuthModal() {
+    hideModalEl($("auth-modal"));
+  }
+
+  function showProfileModal() {
+    hideAuthModal();
+    hideForgotModal();
+    const passErr = $("password-error");
+    const passSucc = $("password-success");
+    if (passErr) passErr.hidden = true;
+    if (passSucc) passSucc.hidden = true;
+    showModalEl($("profile-modal"));
+  }
+
+  function hideProfileModal() {
+    hideModalEl($("profile-modal"));
+  }
+
+  function showForgotModal() {
+    hideAuthModal();
+    hideProfileModal();
+    showModalEl($("forgot-modal"));
+  }
+
+  function hideForgotModal() {
+    hideModalEl($("forgot-modal"));
   }
 
   async function loadFromAppwriteCloud(shareId) {
@@ -1072,9 +1202,8 @@
       const data = await res.json();
       const now = Date.now();
 
-      // Check auto-delete / expiration timer (24h / 48h)
-      if (data.expiresAt && data.expiresAt > 0 && now > data.expiresAt) {
-        // Auto-delete immediately from Appwrite Database
+      // Check auto-delete / expiration timer (Only for temporary documents)
+      if (!data.isPermanent && data.expiresAt && data.expiresAt > 0 && now > data.expiresAt) {
         try {
           await fetch(url, {
             method: "DELETE",
@@ -1107,11 +1236,15 @@
       if (savedDoc) {
         savedDoc.cloudId = shareId;
         savedDoc.expiresAt = data.expiresAt || 0;
+        savedDoc.isPermanent = !!data.isPermanent;
+        savedDoc.userId = data.userId || null;
         const docs = getUploadedDocs();
         const found = docs.find(d => d.id === savedDoc.id);
         if (found) {
           found.cloudId = shareId;
           found.expiresAt = data.expiresAt || 0;
+          found.isPermanent = !!data.isPermanent;
+          found.userId = data.userId || null;
           persistUploadedDocs(docs);
         }
         await loadCustomUploadedDoc(savedDoc, false);
@@ -1119,8 +1252,21 @@
         await renderCustomMarkdown(docContent, docTitle, docFilename);
       }
 
-      // Add expiration banner on top if it has an expiration timer
-      if (data.expiresAt && data.expiresAt > now) {
+      // Add appropriate banner
+      if (data.isPermanent || data.expiresAt === 0) {
+        const banner = document.createElement("div");
+        banner.className = "cloud-expiry-banner";
+        banner.style.background = "rgba(16, 185, 129, 0.08)";
+        banner.style.borderColor = "rgba(16, 185, 129, 0.25)";
+        banner.innerHTML = `
+          <span class="cloud-expiry-badge" style="color: #065f46;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Permanent Cloud Document
+          </span>
+          <span class="cloud-expiry-timer" style="color: #047857;">♾️ Saved permanently to DocuVerse Cloud</span>
+        `;
+        article.prepend(banner);
+      } else if (data.expiresAt && data.expiresAt > now) {
         const remainingHours = Math.max(1, Math.round((data.expiresAt - now) / 3600000));
         const banner = document.createElement("div");
         banner.className = "cloud-expiry-banner";
@@ -1195,14 +1341,12 @@
         await loadDocument(sampleMatch, false);
         return;
       }
-      // If docId is unknown locally, check if it is a cloud document ID
       if (docId.length >= 10) {
         await loadFromAppwriteCloud(docId);
         return;
       }
     }
 
-    // Check last active doc from local database
     const lastActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE);
     if (lastActiveId) {
       const customMatch = uploadedDocs.find(d => d.id === lastActiveId);
@@ -1212,13 +1356,11 @@
       }
     }
 
-    // If user has any uploaded docs, load the latest uploaded one!
     if (uploadedDocs.length > 0) {
       await loadCustomUploadedDoc(uploadedDocs[0], false);
       return;
     }
 
-    // Default: Clean DocuVerse Specification
     await loadDocument(DOCS[0], false);
   }
 
@@ -1248,13 +1390,38 @@
   }
 
   async function executeCloudShare(durationHours = 24) {
-    toast(`Saving to Appwrite Cloud (Auto-deletes in ${durationHours}h)...`);
+    const isPermanent = (durationHours === 0);
+
+    // If permanent upload selected, ensure user is logged in
+    if (isPermanent && !currentUser) {
+      showAuthModal("signin");
+      toast("Please sign in or create an account to unlock permanent storage.");
+      return;
+    }
+
+    const toastMsg = isPermanent
+      ? "Saving permanent document to Appwrite Cloud..."
+      : `Saving to Appwrite Cloud (Auto-deletes in ${durationHours}h)...`;
+    toast(toastMsg);
+
     const shareBtn = $("copy-link-button");
     if (shareBtn) shareBtn.disabled = true;
 
     try {
-      const expiresAt = Date.now() + (durationHours * 60 * 60 * 1000);
+      const expiresAt = isPermanent ? 0 : (Date.now() + (durationHours * 60 * 60 * 1000));
       const uploadUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents`;
+
+      const payloadData = {
+        title: activeDoc.title || "Shared Document",
+        filename: activeDoc.file || activeDoc.filename || "document.md",
+        content: currentMarkdown,
+        size: (activeDoc.size || currentMarkdown.length),
+        fileId: activeDoc.id || "",
+        expiresAt: expiresAt,
+        isPermanent: isPermanent,
+        userId: currentUser ? currentUser.$id : null
+      };
+
       const res = await fetch(uploadUrl, {
         method: "POST",
         headers: {
@@ -1263,14 +1430,7 @@
         },
         body: JSON.stringify({
           documentId: "unique()",
-          data: {
-            title: activeDoc.title || "Shared Document",
-            filename: activeDoc.file || activeDoc.filename || "document.md",
-            content: currentMarkdown,
-            size: (activeDoc.size || currentMarkdown.length),
-            fileId: activeDoc.id || "",
-            expiresAt: expiresAt
-          }
+          data: payloadData
         })
       });
 
@@ -1282,22 +1442,30 @@
       const cloudDoc = await res.json();
       const cloudId = cloudDoc.$id;
 
-      // Save cloudId & expiresAt in local doc so future clicks know status
+      // Update local doc properties
       activeDoc.cloudId = cloudId;
       activeDoc.expiresAt = expiresAt;
+      activeDoc.isPermanent = isPermanent;
+      activeDoc.userId = payloadData.userId;
 
       const docs = getUploadedDocs();
       const existing = docs.find(d => d.id === activeDoc.id);
       if (existing) {
         existing.cloudId = cloudId;
         existing.expiresAt = expiresAt;
+        existing.isPermanent = isPermanent;
+        existing.userId = payloadData.userId;
         persistUploadedDocs(docs);
       }
 
       drawDocumentList();
       const url = `${location.origin}${location.pathname}?share=${encodeURIComponent(cloudId)}`;
       history.replaceState({}, "", `?share=${encodeURIComponent(cloudId)}`);
-      await copyToClipboard(url, `Saved to Appwrite Cloud (Auto-deletes in ${durationHours}h) & link copied!`);
+
+      const successToast = isPermanent
+        ? "Saved permanently to Appwrite Cloud & link copied!"
+        : `Saved to Appwrite Cloud (Auto-deletes in ${durationHours}h) & link copied!`;
+      await copyToClipboard(url, successToast);
     } catch (err) {
       console.warn("Appwrite upload failed, fallback to hash:", err);
       if (currentMarkdown.length < 8000) {
@@ -1322,17 +1490,18 @@
       return;
     }
 
-    // B. Uploaded / Custom Document: Show 24h/48h auto-delete modal!
+    // B. Uploaded / Custom Document: Show 24h / 48h / Permanent modal!
     if (activeDoc && (activeDoc.isUploaded || activeDoc.id === "custom")) {
-      // If already uploaded and still valid (not expired), copy existing link
-      if (activeDoc.cloudId && activeDoc.expiresAt && activeDoc.expiresAt > Date.now()) {
-        const remainingHours = Math.max(1, Math.round((activeDoc.expiresAt - Date.now()) / 3600000));
-        url = `${location.origin}${location.pathname}?share=${encodeURIComponent(activeDoc.cloudId)}`;
-        await copyToClipboard(url, `Cloud share link copied! (Expires in ~${remainingHours}h)`);
-        return;
+      if (activeDoc.cloudId) {
+        const isStillValid = activeDoc.isPermanent || (activeDoc.expiresAt && activeDoc.expiresAt > Date.now());
+        if (isStillValid) {
+          url = `${location.origin}${location.pathname}?share=${encodeURIComponent(activeDoc.cloudId)}`;
+          const expiryInfo = activeDoc.isPermanent ? "(Permanent)" : `(Expires in ~${Math.max(1, Math.round((activeDoc.expiresAt - Date.now()) / 3600000))}h)`;
+          await copyToClipboard(url, `Cloud share link copied! ${expiryInfo}`);
+          return;
+        }
       }
 
-      // Open Share Modal to choose 24h or 48h
       showShareModal();
       return;
     }
@@ -1482,6 +1651,257 @@
       if (e.key === "Escape" && !openModal.hidden) {
         hideModal();
       }
+    });
+  }
+
+  // Event Listeners
+  // Setup Share Modal (24h / 48h / Permanent)
+  const shareModal = $("share-modal");
+  if (shareModal) {
+    const closeBtn = $("share-modal-close");
+    const cancelBtn = $("share-modal-cancel");
+    const backdrop = $("share-modal-backdrop");
+    const confirmBtn = $("confirm-share-cloud-btn");
+    const card24 = $("expiry-card-24");
+    const card48 = $("expiry-card-48");
+    const cardPerm = $("expiry-card-perm");
+
+    if (closeBtn) closeBtn.addEventListener("click", hideShareModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", hideShareModal);
+    if (backdrop) backdrop.addEventListener("click", hideShareModal);
+
+    function setExpiryCardActive(targetCard) {
+      [card24, card48, cardPerm].forEach(c => {
+        if (c) c.classList.remove("active");
+      });
+      if (targetCard) {
+        targetCard.classList.add("active");
+        const r = targetCard.querySelector('input[type="radio"]');
+        if (r) r.checked = true;
+      }
+    }
+
+    if (card24) card24.addEventListener("click", () => setExpiryCardActive(card24));
+    if (card48) card48.addEventListener("click", () => setExpiryCardActive(card48));
+    if (cardPerm) {
+      cardPerm.addEventListener("click", (e) => {
+        if (!currentUser) {
+          e.preventDefault();
+          hideShareModal();
+          showAuthModal("signin");
+          toast("Sign in or create an account to unlock permanent cloud storage.");
+          return;
+        }
+        setExpiryCardActive(cardPerm);
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+        const checked = document.querySelector('input[name="share-expiry"]:checked');
+        let hours = 24;
+        if (checked) {
+          if (checked.value === "48") hours = 48;
+          else if (checked.value === "0") hours = 0; // Permanent
+        }
+        hideShareModal();
+        await executeCloudShare(hours);
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !shareModal.hidden) {
+        hideShareModal();
+      }
+    });
+  }
+
+  // Setup Auth Modal & Profile Listeners
+  const authSigninBtn = $("auth-signin-btn");
+  const userProfileBtn = $("user-profile-btn");
+  if (authSigninBtn) authSigninBtn.addEventListener("click", () => showAuthModal("signin"));
+  if (userProfileBtn) userProfileBtn.addEventListener("click", showProfileModal);
+
+  // Auth Modal Controls
+  const authModal = $("auth-modal");
+  if (authModal) {
+    const authClose = $("auth-modal-close");
+    const authBackdrop = $("auth-modal-backdrop");
+    const tabSignin = $("tab-btn-signin");
+    const tabSignup = $("tab-btn-signup");
+    const openForgotLink = $("open-forgot-link");
+
+    if (authClose) authClose.addEventListener("click", hideAuthModal);
+    if (authBackdrop) authBackdrop.addEventListener("click", hideAuthModal);
+
+    if (tabSignin) tabSignin.addEventListener("click", () => showAuthModal("signin"));
+    if (tabSignup) tabSignup.addEventListener("click", () => showAuthModal("signup"));
+    if (openForgotLink) openForgotLink.addEventListener("click", showForgotModal);
+
+    // Sign In Form Submission
+    const signinForm = $("signin-form");
+    if (signinForm) {
+      signinForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = $("signin-email").value.trim();
+        const password = $("signin-password").value;
+        const errEl = $("signin-error");
+        const submitBtn = $("signin-submit-btn");
+
+        if (errEl) errEl.hidden = true;
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Signing In..."; }
+
+        try {
+          if (!appwriteAccount) initAppwriteAuth();
+          await appwriteAccount.createEmailPasswordSession(email, password);
+          await checkUserSession();
+          hideAuthModal();
+          toast("Signed in successfully! Permanent storage is now unlocked.");
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = err.message || "Failed to sign in. Please verify your email and password.";
+            errEl.hidden = false;
+          }
+        } finally {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Sign In to DocuVerse"; }
+        }
+      });
+    }
+
+    // Sign Up Form Submission
+    const signupForm = $("signup-form");
+    if (signupForm) {
+      signupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = $("signup-name").value.trim();
+        const email = $("signup-email").value.trim();
+        const password = $("signup-password").value;
+        const errEl = $("signup-error");
+        const submitBtn = $("signup-submit-btn");
+
+        if (errEl) errEl.hidden = true;
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Creating Account..."; }
+
+        try {
+          if (!appwriteAccount) initAppwriteAuth();
+          const userId = (window.Appwrite && window.Appwrite.ID) ? window.Appwrite.ID.unique() : ("usr_" + Date.now());
+          await appwriteAccount.create(userId, email, password, name);
+          // Automatically log in newly created user
+          await appwriteAccount.createEmailPasswordSession(email, password);
+          await checkUserSession();
+          hideAuthModal();
+          toast("Welcome to DocuVerse! Permanent storage is now active.");
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = err.message || "Could not create account. Please try a different email or password.";
+            errEl.hidden = false;
+          }
+        } finally {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create Free Account"; }
+        }
+      });
+    }
+
+    // OAuth Handlers
+    const oauthGithub = $("oauth-github-btn");
+    const oauthGoogle = $("oauth-google-btn");
+
+    if (oauthGithub) {
+      oauthGithub.addEventListener("click", () => {
+        if (!appwriteAccount) initAppwriteAuth();
+        try {
+          const provider = (window.Appwrite && window.Appwrite.OAuthProvider) ? window.Appwrite.OAuthProvider.Github : "github";
+          appwriteAccount.createOAuth2Session(provider, window.location.href, window.location.href);
+        } catch (err) {
+          toast("OAuth error: " + err.message);
+        }
+      });
+    }
+
+    if (oauthGoogle) {
+      oauthGoogle.addEventListener("click", () => {
+        if (!appwriteAccount) initAppwriteAuth();
+        try {
+          const provider = (window.Appwrite && window.Appwrite.OAuthProvider) ? window.Appwrite.OAuthProvider.Google : "google";
+          appwriteAccount.createOAuth2Session(provider, window.location.href, window.location.href);
+        } catch (err) {
+          toast("OAuth error: " + err.message);
+        }
+      });
+    }
+  }
+
+  // Profile Modal & Password Change Listeners
+  const profileModal = $("profile-modal");
+  if (profileModal) {
+    const profClose = $("profile-modal-close");
+    const profBackdrop = $("profile-modal-backdrop");
+    const logoutBtn = $("logout-btn");
+    const changePassForm = $("change-password-form");
+
+    if (profClose) profClose.addEventListener("click", hideProfileModal);
+    if (profBackdrop) profBackdrop.addEventListener("click", hideProfileModal);
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        if (!appwriteAccount) initAppwriteAuth();
+        try {
+          await appwriteAccount.deleteSession("current");
+        } catch (_) {}
+        currentUser = null;
+        updateUserAuthUI();
+        hideProfileModal();
+        toast("Logged out successfully.");
+      });
+    }
+
+    if (changePassForm) {
+      changePassForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const oldPass = $("change-old-password").value;
+        const newPass = $("change-new-password").value;
+        const errEl = $("password-error");
+        const succEl = $("password-success");
+        const submitBtn = $("update-password-submit-btn");
+
+        if (errEl) errEl.hidden = true;
+        if (succEl) succEl.hidden = true;
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Updating..."; }
+
+        try {
+          if (!appwriteAccount) initAppwriteAuth();
+          await appwriteAccount.updatePassword(newPass, oldPass);
+          if (succEl) {
+            succEl.textContent = "Password updated successfully! Zero OTP hassle.";
+            succEl.hidden = false;
+          }
+          $("change-old-password").value = "";
+          $("change-new-password").value = "";
+          toast("Password changed successfully!");
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = err.message || "Failed to update password. Verify current password.";
+            errEl.hidden = false;
+          }
+        } finally {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Update Password"; }
+        }
+      });
+    }
+  }
+
+  // Forgot Password Modal Listeners
+  const forgotModal = $("forgot-modal");
+  if (forgotModal) {
+    const forgotClose = $("forgot-modal-close");
+    const forgotBackdrop = $("forgot-modal-backdrop");
+    const forgotBackBtn = $("forgot-back-btn");
+
+    if (forgotClose) forgotClose.addEventListener("click", hideForgotModal);
+    if (forgotBackdrop) forgotBackdrop.addEventListener("click", hideForgotModal);
+    if (forgotBackBtn) forgotBackBtn.addEventListener("click", () => {
+      hideForgotModal();
+      showAuthModal("signin");
     });
   }
 
