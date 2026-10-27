@@ -17,6 +17,16 @@
   const STORAGE_KEY_DOCS = "docuverse_uploaded_docs_v1";
   const STORAGE_KEY_ACTIVE = "docuverse_active_doc_id";
 
+  /* ----------------------------------------------------
+     Appwrite Cloud Configuration (Dedicated Sharing Layer)
+  ---------------------------------------------------- */
+  const APPWRITE_CONFIG = {
+    endpoint: "https://sgp.cloud.appwrite.io/v1",
+    projectId: "6ae0606a00131d3f9e1e",
+    databaseId: "docuverse_db",
+    collectionId: "documents"
+  };
+
   function getUploadedDocs() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_DOCS);
@@ -53,7 +63,8 @@
       content,
       createdAt: Date.now(),
       size: content.length,
-      isUploaded: true
+      isUploaded: true,
+      cloudId: null
     };
 
     const existingIndex = docs.findIndex(d => d.filename === cleanName && d.title === cleanTitle);
@@ -161,7 +172,7 @@
 
         const metaSpan = document.createElement("span");
         metaSpan.className = "doc-item-meta";
-        metaSpan.textContent = "Uploaded · Local";
+        metaSpan.textContent = doc.cloudId ? "Uploaded · Cloud Synced" : "Uploaded · Local";
 
         info.append(titleSpan, metaSpan);
         a.append(icon, info);
@@ -924,7 +935,7 @@
      Document Loading & Rendering Engine
   ---------------------------------------------------- */
   async function loadCustomUploadedDoc(doc, changeHistory = true) {
-    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true };
+    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true, cloudId: doc.cloudId || null };
     currentMarkdown = doc.content;
     currentFilename = doc.filename;
 
@@ -1030,6 +1041,45 @@
     }
   }
 
+    async function loadFromAppwriteCloud(shareId) {
+    article.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Fetching shared document from Appwrite Cloud…</p></div>';
+    try {
+      const url = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents/${encodeURIComponent(shareId)}`;
+      const res = await fetch(url, {
+        headers: {
+          "X-Appwrite-Project": APPWRITE_CONFIG.projectId
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Cloud document not found (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      const docContent = data.content || "";
+      const docTitle = data.title || data.filename || "Shared Document";
+      const docFilename = data.filename || "shared.md";
+
+      // Cache locally so it appears in the sidebar library
+      const savedDoc = saveUploadedDoc(docTitle, docFilename, docContent);
+      if (savedDoc) {
+        savedDoc.cloudId = shareId;
+        const docs = getUploadedDocs();
+        const found = docs.find(d => d.id === savedDoc.id);
+        if (found) {
+          found.cloudId = shareId;
+          persistUploadedDocs(docs);
+        }
+        await loadCustomUploadedDoc(savedDoc, false);
+      } else {
+        await renderCustomMarkdown(docContent, docTitle, docFilename);
+      }
+
+      toast("Shared document loaded from Appwrite Cloud!");
+    } catch (err) {
+      article.innerHTML = `<div class="loading-state"><p>Could not load shared document from cloud.</p><p style="color:var(--muted);font-size:12px;">${err.message}</p></div>`;
+      toast("Could not load document from cloud.");
+    }
+  }
+
   async function routeAndLoad() {
     // 1. Direct Base64 Hash Data (#data= or #md=)
     const hashData = decodeHashData();
@@ -1040,21 +1090,28 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    // 2. Query param ?github=
+    // 2. Appwrite Cloud Shared Doc (?share=)
+    const shareParam = params.get("share");
+    if (shareParam) {
+      await loadFromAppwriteCloud(shareParam);
+      return;
+    }
+
+    // 3. Query param ?github=
     const githubParam = params.get("github");
     if (githubParam) {
       await loadFromRemoteUrl(githubParam);
       return;
     }
 
-    // 3. Query param ?url=
+    // 4. Query param ?url=
     const urlParam = params.get("url");
     if (urlParam) {
       await loadFromRemoteUrl(urlParam);
       return;
     }
 
-    // 4. Query param ?gist=
+    // 5. Query param ?gist=
     const gistParam = params.get("gist");
     if (gistParam) {
       const gistUrl = gistParam.startsWith("http") ? gistParam : ("https://gist.github.com/" + gistParam);
@@ -1062,12 +1119,12 @@
       return;
     }
 
-    // 5. Query param ?doc= or Local Database check
+    // 6. Query param ?doc= or Local Database check
     const docId = params.get("doc");
     const uploadedDocs = getUploadedDocs();
 
     if (docId) {
-      const customMatch = uploadedDocs.find(d => d.id === docId);
+      const customMatch = uploadedDocs.find(d => d.id === docId || d.cloudId === docId);
       if (customMatch) {
         await loadCustomUploadedDoc(customMatch, false);
         return;
@@ -1075,6 +1132,11 @@
       const sampleMatch = DOCS.find(d => d.id === docId);
       if (sampleMatch) {
         await loadDocument(sampleMatch, false);
+        return;
+      }
+      // If docId is unknown locally, check if it is a cloud document ID
+      if (docId.length >= 10) {
+        await loadFromAppwriteCloud(docId);
         return;
       }
     }
@@ -1115,21 +1177,96 @@
     if (lightLink) lightLink.disabled = false;
   }
 
+  async function copyToClipboard(text, successMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMsg || "Link copied to clipboard!");
+    } catch (_) {
+      window.prompt("Copy link:", text);
+    }
+  }
+
   async function shareLink() {
     let url = window.location.href;
-    // If active document is custom and not in URL, create a sharable hash link if reasonable size (<8kb)
-    if (activeDoc && activeDoc.id === "custom" && !location.search && !location.hash) {
-      if (currentMarkdown.length < 8000) {
-        const encoded = encodeHashData(currentMarkdown);
-        url = `${location.origin}${location.pathname}#data=${encoded}`;
+
+    // A. Built-in Guide Document: share standard doc URL
+    if (activeDoc && !activeDoc.isUploaded && activeDoc.id !== "custom") {
+      url = `${location.origin}${location.pathname}?doc=${encodeURIComponent(activeDoc.id)}`;
+      await copyToClipboard(url, "Document link copied to clipboard!");
+      return;
+    }
+
+    // B. Uploaded / Custom Document: Only save to Appwrite Cloud on Share click!
+    if (activeDoc && (activeDoc.isUploaded || activeDoc.id === "custom")) {
+      // 1. If already synced to Cloud, reuse existing cloudId
+      if (activeDoc.cloudId) {
+        url = `${location.origin}${location.pathname}?share=${encodeURIComponent(activeDoc.cloudId)}`;
+        await copyToClipboard(url, "Shareable cloud link copied to clipboard!");
+        return;
       }
+
+      // 2. Otherwise upload to Appwrite Cloud now!
+      toast("Saving document to Appwrite Cloud...");
+      const shareBtn = $("copy-link-button");
+      if (shareBtn) shareBtn.disabled = true;
+
+      try {
+        const uploadUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents`;
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            "X-Appwrite-Project": APPWRITE_CONFIG.projectId,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            documentId: "unique()",
+            data: {
+              title: activeDoc.title || "Shared Document",
+              filename: activeDoc.file || activeDoc.filename || "document.md",
+              content: currentMarkdown,
+              size: (activeDoc.size || currentMarkdown.length),
+              fileId: activeDoc.id || ""
+            }
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Appwrite Error ${res.status}`);
+        }
+
+        const cloudDoc = await res.json();
+        const cloudId = cloudDoc.$id;
+
+        // Save cloudId in local doc so future clicks don't re-upload
+        activeDoc.cloudId = cloudId;
+        const docs = getUploadedDocs();
+        const existing = docs.find(d => d.id === activeDoc.id);
+        if (existing) {
+          existing.cloudId = cloudId;
+          persistUploadedDocs(docs);
+        }
+
+        drawDocumentList();
+        url = `${location.origin}${location.pathname}?share=${encodeURIComponent(cloudId)}`;
+        history.replaceState({}, "", `?share=${encodeURIComponent(cloudId)}`);
+        await copyToClipboard(url, "Saved to Appwrite Cloud & share link copied!");
+      } catch (err) {
+        console.warn("Appwrite upload failed, fallback to hash:", err);
+        if (currentMarkdown.length < 8000) {
+          const encoded = encodeHashData(currentMarkdown);
+          url = `${location.origin}${location.pathname}#data=${encoded}`;
+          await copyToClipboard(url, "Share link copied (fallback offline mode)");
+        } else {
+          toast("Cloud save failed: " + err.message);
+        }
+      } finally {
+        if (shareBtn) shareBtn.disabled = false;
+      }
+      return;
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("Sharable document link copied to clipboard!");
-    } catch (_) {
-      window.prompt("Copy this document link:", url);
-    }
+
+    await copyToClipboard(url, "Link copied to clipboard!");
   }
 
   function findInDocument(query) {
