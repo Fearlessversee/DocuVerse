@@ -1,5 +1,5 @@
 {
-  "name": "DocuVerse — Interactive Markdown & Mermaid Showcase",
+  "name": "DocuVerse",
   "short_name": "DocuVerse",
   "description": "High-performance, zero-backend interactive Markdown and Mermaid architecture showcase with deep pan, zoom, and fullscreen lightbox.",
   "start_url": "./",
@@ -40,8 +40,15 @@
         }
       ],
       "accept": {
-        "text/markdown": [".md", ".markdown", ".mdown", ".mkd"],
-        "text/plain": [".txt"]
+        "text/markdown": [
+          ".md",
+          ".markdown",
+          ".mdown",
+          ".mkd"
+        ],
+        "text/plain": [
+          ".txt"
+        ]
       }
     }
   ],
