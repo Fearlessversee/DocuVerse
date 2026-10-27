@@ -2,16 +2,17 @@
 
 # 🌌 DocuVerse
 
-### The Zero-Backend Interactive Markdown & Mermaid Architecture Showcase
+### The Universal Markdown & Mermaid Architecture Showcase with Ephemeral Cloud Sharing
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Zero Backend](https://img.shields.io/badge/Backend-Zero%20Dependency-brightgreen.svg)](#features)
-[![Deploy with GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-181717.svg?logo=github)](https://github.com/virajverse/docuverse)
+[![Storage: Offline-First](https://img.shields.io/badge/Storage-100%25%20Offline%20First-success.svg)](#offline-first-local-storage)
+[![Cloud: Appwrite Ephemeral](https://img.shields.io/badge/Cloud-Appwrite%20On--Demand-F02E65.svg?logo=appwrite&logoColor=white)](#ephemeral-cloud-sharing--auto-delete)
 [![Mermaid v11](https://img.shields.io/badge/Mermaid-v11.6.0-ff69b4.svg)](https://mermaid.js.org/)
+[![Deploy with Vercel](https://img.shields.io/badge/Deploy-Vercel-000000.svg?logo=vercel&logoColor=white)](https://docuversee.vercel.app/)
 [![Created by virajverse](https://img.shields.io/badge/Author-virajverse-7c3aed.svg)](https://github.com/virajverse)
 
 <p align="center">
-  <b>Turn complex Technical PRDs, System Designs, and Architecture Blueprints into beautiful, interactive, production-grade web documents — with zero backend, zero build step, and instant 1-click hosting.</b>
+  <b>Turn complex Technical PRDs, System Designs, and Architecture Blueprints into beautiful, interactive, production-grade web documents — with 100% offline-first local storage, pan/zoom diagram lightboxes, and ephemeral 24h/48h cloud sharing powered by Appwrite.</b>
 </p>
 
 [**Explore Live Demo »**](https://docuversee.vercel.app/) · [**Report Bug**](https://github.com/virajverse/DocuVerse/issues) · [**Request Feature**](https://github.com/virajverse/DocuVerse/issues)
@@ -22,103 +23,59 @@
 
 ## ⚡ Why DocuVerse?
 
-| The Pain Point | How DocuVerse Solves It |
+| The Problem | How DocuVerse Solves It |
 | :--- | :--- |
 | **Mermaid diagrams get clipped or unreadable** on standard GitHub or static pages when flowcharts are large. | **Interactive Pan & Zoom + Fullscreen Lightbox Modal**: inspect every node, connection, and label at up to 300% zoom without clipping. |
-| **Heavy documentation frameworks** (Docusaurus, Nextra, GitBook) require complex Node.js builds, npm packages, or paid tiers. | **100% Static & Zero Build**: Drop HTML/CSS/JS onto Vercel, GitHub Pages, or Netlify and it runs instantly. |
-| **Ugly default themes & cluttered interfaces** distract from technical content. | **Distraction-Free Pure Light Theme**: Curated typography (*Plus Jakarta Sans* & *JetBrains Mono*), zero focus borders, clean visual hierarchy. |
-| **Offline viewing fails** due to browser local file CORS restrictions. | **Smart LocalStorage & Embedded Caching**: Load once or run locally with offline resilience. |
+| **Cloud privacy concerns**: uploading sensitive specs to third-party databases by default. | **100% Offline-First by Default**: Uploaded `.md` files stay private in your browser's `localStorage`. Zero cloud sync unless you explicitly share. |
+| **Shared technical links linger forever on the web**. | **Self-Destruct Cloud Sharing (24h / 48h)**: When you click "Share Link", documents upload to Appwrite Cloud with a countdown timer and auto-delete upon expiration. |
+| **Heavy documentation frameworks** (Docusaurus, Nextra, GitBook) require complex Node.js build steps and maintenance. | **Zero-Build Architecture**: Vanilla HTML5, modern CSS3, and ES6 JavaScript. Runs instantly on Vercel, GitHub Pages, or any static host. |
+| **Cluttered AI boilerplate interfaces** full of fake status dots and emojis. | **Distraction-Free Engineering Design**: Pure vector SVG icons, crisp typography (*Plus Jakarta Sans* & *JetBrains Mono*), and clean visual hierarchy. |
 
 ---
 
-## 🌐 View Any Markdown Instantly (Universal Viewer)
-
-DocuVerse is not just a showcase — it's a **universal viewer for any Markdown document or PRD on the web**:
+## 🚀 Key Features
 
 ```mermaid
-flowchart LR
-    GH[Any GitHub Markdown URL] --> DV[DocuVerse Engine]
-    RAW[Any Public Raw .md URL] --> DV
-    PASTE[Paste Raw Markdown / URL Input] --> DV
-    AI[AI Generated Base64 #data] --> DV
-    DV --> VIEW[Interactive Lightbox + Pan & Zoom + Mobile Responsive View]
+flowchart TD
+    A["Local .md Upload / Paste"] -->|"100% Private"| B["Browser LocalStorage (Offline Library)"]
+    B --> C["DocuVerse Interactive Viewer"]
+    C -->|"Inspect Diagrams"| D["Mermaid Zoom & Pan Lightbox (300%)"]
+    C -->|"Click 'Share Link'"| E["Appwrite Cloud On-Demand"]
+    E -->|"Choose Timer"| F{"24h or 48h Auto-Delete"}
+    F -->|"Timer Active"| G["Sharable Cloud URL (?share=id)"]
+    F -->|"Timer Expired"| H["Permanent Auto-Delete (Wipe from DB)"]
 ```
 
-### 1. View Any GitHub File via URL
-Pass any GitHub repository file directly into the URL:
-```
-https://docuversee.vercel.app/?github=facebook/react/main/README.md
-```
-Or paste the full GitHub link:
-```
-https://docuversee.vercel.app/?github=https://github.com/virajverse/DocuVerse/blob/main/README.md
-```
+### 1. 📁 100% Offline-First Local Document Library
+- Upload `.md` files directly using the **`+ Upload .md File`** button in the left sidebar.
+- Documents are parsed client-side and saved persistently to your browser's local library.
+- Status indicator displays **`Uploaded · Local`** — no network traffic, zero third-party exposure.
+- Manage documents anytime: switch between uploaded specs, view file metrics, or delete them in 1 click.
 
-### 2. View Any Public Raw URL
-```
-https://docuversee.vercel.app/?url=https://raw.githubusercontent.com/virajverse/DocuVerse/main/README.md
-```
+### 2. ⏱️ Ephemeral Cloud Sharing & Auto-Delete (Appwrite Cloud)
+- Need to share your document with a colleague or client? Click **"Share Link"** in the top toolbar.
+- Choose your preferred self-destruct timer:
+  - ⏱️ **24 Hours** (Auto-deletes from cloud in 1 day)
+  - ⏱️ **48 Hours** (Auto-deletes from cloud in 2 days)
+- Generates a clean URL (`?share=<cloud_id>`) copied straight to your clipboard.
+- **Auto-Deletion Guarantee**: When the timer runs out, the document is permanently deleted from the Appwrite database (`docuverse_db`), rendering subsequent visitors an expired document notice.
+- Active shared documents display a live countdown banner: `⏳ Temporary Cloud Document · Auto-deletes in ~X hours`.
 
-### 3. Add 1-Click Redirect Banner into ANY Markdown File
-When someone opens a Markdown or PRD file on GitHub or raw web, they can immediately jump to the interactive DocuVerse view with zero manual steps. Put this at line 1 of your `.md` file:
+### 3. 🔍 Interactive Mermaid Architecture Viewer
+- Full-height natural diagram rendering — no truncated labels or squished flowcharts.
+- In-place controls: Zoom in (`＋`), Zoom out (`－`), and Reset view (`⟲ 100%`).
+- Dedicated **1-Click Fullscreen Lightbox Modal** with click-to-drag panning, mouse wheel zooming, and keyboard shortcuts (`+`, `-`, `0`, `Esc`).
 
-```markdown
-<div align="center">
+### 4. 🌐 Universal Markdown Loader
+Load documents from anywhere on the web:
+- **GitHub URL**: `https://docuversee.vercel.app/?github=owner/repo/branch/README.md`
+- **Raw URL**: `https://docuversee.vercel.app/?url=https://example.com/spec.md`
+- **Gist URL**: `https://docuversee.vercel.app/?gist=GIST_ID`
+- **Raw Paste**: Quick-paste Markdown directly into the modal for instant interactive preview.
 
-[![⚡ Open Interactive View in DocuVerse](https://img.shields.io/badge/⚡_Open_Interactive_View-DocuVerse-7c3aed?style=for-the-badge&logo=markdown&logoColor=white)](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md)
-
-| 📱 **Mobile Users** | 💻 **Laptop / Desktop Users** |
-| :---: | :---: |
-| GitHub mobile shrinks diagrams and cuts off labels. <br> 👉 [**Tap to Open in Mobile Reader / PWA**](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md) | Inspect complex diagrams at up to 300% zoom without clipping. <br> 👉 [**Open Fullscreen Lightbox & Pan/Zoom**](https://docuversee.vercel.app/?github=OWNER/REPO/BRANCH/PATH.md) |
-
----
-
-</div>
-```
-*(Tip: You can also click the **"⚡ Get README Badge"** button inside the [DocuVerse toolbar](https://docuversee.vercel.app/) to generate this snippet automatically for your repository!)*
-
-### 4. Install as a Native Web App (Mobile & Desktop PWA)
-DocuVerse is a **Progressive Web App (PWA)**:
-- **On Android / Chrome / Edge:** Tap **"📲 Install App"** in the topbar or browser menu to add DocuVerse to your home screen or desktop dock.
-- **On iPhone / Safari:** Tap the **Share** button (`⎋`) → **"Add to Home Screen"**.
-- **Works Offline:** Once installed, the app shell and cached documents open instantly even with zero network connectivity.
-
----
-
-## ✨ Features at a Glance
-
-- 📲 **Installable Progressive Web App (PWA)**
-  - 1-Tap install on mobile (Android/iOS) and desktop (Chrome/Edge/Mac).
-  - Standalone app mode without browser address bar.
-  - Offline Service Worker caching (`sw.js`) for instant loading.
-
-- 🌐 **1-Click Markdown Redirect & Universal Loader**
-  - Add 1-click header banners to any `.md` file to jump straight into DocuVerse.
-  - Instant loading via `?github=owner/repo/branch/file.md` or `?url=https://...`.
-  - Zero-storage AI link sharing via Base64 hash `#data=...`.
-  - Clean URL loader with quick samples and raw paste modal.
-
-- 🔍 **Interactive Mermaid Architecture Viewer**
-  - Natural full-height rendering (no vertical cutoffs or squeezed nodes).
-  - In-place Zoom controls (`＋`, `－`, `⟲ Reset`).
-  - Click-to-drag interactive canvas panning.
-  - Dedicated **1-Click Fullscreen Lightbox Modal** with pinch-to-zoom, mousewheel zoom, and keyboard shortcuts (`+`, `-`, `0`, `Esc`).
-
-- 🎨 **World-Class Minimalist Light Design**
-  - Crisp light theme tailored for prolonged reading comfort.
-  - No accidental browser focus rings or ugly outlines.
-  - Mobile-responsive with auto-scroll table wrappers and slide-over sidebar.
-
-- 📑 **Smart Reading Experience**
-  - **Auto-Generated TOC**: Dynamic table of contents with live scroll spy.
-  - **Reading Tracker**: Real-time reading progress bar + calculated reading time and word count.
-  - **Instant Search (`Ctrl + K`)**: High-speed keyword search with direct jump links.
-  - **1-Click Code Copy**: Copy snippet button on all highlighted code blocks.
-
-- 🚀 **Zero-Backend & Static-First**
-  - No server, database, or API required.
-  - Host anywhere: GitHub Pages, Cloudflare Pages, Vercel, Netlify, or AWS S3.
-  - Built-in LocalStorage document caching.
+### 5. 📲 Progressive Web App (PWA)
+- Installable on mobile (Android/iOS) and desktop (Chrome/Edge/macOS).
+- Standalone app mode with dedicated icon pack and offline service worker caching (`sw.js`).
 
 ---
 
@@ -127,120 +84,57 @@ DocuVerse is a **Progressive Web App (PWA)**:
 | Feature | GitHub Raw / Gist | Docusaurus / Nextra | GitBook | **DocuVerse** |
 | :--- | :---: | :---: | :---: | :---: |
 | **Zero Build Step** | ✅ | ❌ | ❌ | 🌟 **Yes** |
-| **Zero Backend Required** | ✅ | ❌ | ❌ | 🌟 **Yes** |
-| **Interactive Mermaid Zoom & Pan** | ❌ | ❌ (needs plugins) | ❌ | 🌟 **Built-in** |
+| **100% Offline-First Storage** | ❌ | ❌ | ❌ | 🌟 **Yes (`localStorage`)** |
+| **Ephemeral Cloud Sharing** | ❌ | ❌ | ❌ | 🌟 **Yes (24h/48h Auto-Delete)** |
+| **Interactive Mermaid Zoom & Pan** | ❌ | ❌ (needs plugins) | ❌ | 🌟 **Built-in (up to 300%)** |
 | **Fullscreen Diagram Lightbox** | ❌ | ❌ | ❌ | 🌟 **Built-in** |
-| **1-Click GitHub Pages Hosting** | ❌ | ⚠️ (needs workflow) | ❌ | 🌟 **Instant** |
-| **Offline LocalStorage Caching** | ❌ | ❌ | ❌ | 🌟 **Yes** |
-| **100% Free & Open Source (MIT)** | ✅ | ✅ | ❌ (freemium) | 🌟 **Yes** |
+| **Installable PWA** | ❌ | ⚠️ (needs config) | ❌ | 🌟 **Yes** |
+| **Open Source (MIT)** | ✅ | ✅ | ❌ (freemium) | 🌟 **Yes** |
 
 ---
 
-## 🚀 Quick Start (Local Preview)
+## 🚀 Quick Start (Local Development)
 
-Run DocuVerse locally in 5 seconds without installing heavy dependencies:
+Run DocuVerse locally in seconds:
 
-### Prerequisites
-Any simple local HTTP server (Python is pre-installed on most machines).
-
-### Using Python
 ```bash
-# In the project root directory:
-py -m http.server 8080
-# Or:
-python3 -m http.server 8080
-```
-Open **`http://localhost:8080`** in your browser.
+# Clone the repository
+git clone https://github.com/virajverse/DocuVerse.git
+cd DocuVerse
 
-### Using Node.js (Alternative)
-```bash
+# Run with Python (built-in)
+python -m http.server 8080
+
+# Or with Node.js
 npx serve .
 ```
 
----
-
-## 🌐 Publish & Host Live on GitHub Pages (Step-by-Step)
-
-You can host DocuVerse completely free on GitHub Pages in under 2 minutes:
-
-### Step 1: Create a Repository on GitHub
-1. Go to [github.com/new](https://github.com/new).
-2. Set the repository name to **`docuverse`** (under your username/organization **`virajverse`**).
-3. Set visibility to **Public**.
-4. Click **Create repository**.
-
-### Step 2: Push your code to GitHub
-Open your terminal/PowerShell in this folder and run:
-
-```bash
-git init
-git add .
-git commit -m "feat: launch DocuVerse v1.0 by virajverse"
-git branch -M main
-git remote add origin https://github.com/virajverse/docuverse.git
-git push -u origin main
-```
-
-### Step 3: Enable GitHub Pages
-1. In your GitHub repository, navigate to **Settings** → **Pages** (in the left sidebar).
-2. Under **Build and deployment** → **Source**, select **Deploy from a branch**.
-3. Choose branch: **`main`** and folder: **`/ (root)`**.
-4. Click **Save**.
-
-### Step 4: Your Site is Live! 🎉
-Your site is now live on Vercel at:
-```
-https://docuversee.vercel.app/
-```
-(Or on GitHub Pages at `https://virajverse.github.io/DocuVerse/`)
+Open **`http://localhost:8080`** in your browser.
 
 ---
 
-## 📁 Adding Your Own Markdown Documents
+## ☁️ Appwrite Cloud Configuration
 
-Adding new documents takes just 2 simple steps:
+DocuVerse connects to Appwrite Cloud using client-level unauthenticated permissions for ephemeral document sharing:
 
-1. **Place your Markdown file** in the `docs/` folder (e.g., `docs/my-architecture.md`).
-2. **Register it in `assets/app.js`**:
-   Add an entry to the `DOCS` array near the top of [assets/app.js](file:///c:/Users/FEARLESS/Downloads/md-showcase-site/md-showcase-site/assets/app.js):
-
-   ```javascript
-   const DOCS = [
-     {
-       id: "backend-architecture",
-       title: "Improved Backend Architecture",
-       file: "docs/backend-architecture.md",
-       subtitle: "PRD v1.1.0 · Technical blueprint"
-     },
-     {
-       id: "my-architecture",
-       title: "System Architecture",
-       file: "docs/my-architecture.md",
-       subtitle: "Engineering spec v1.0"
-     }
-   ];
-   ```
-
-3. Commit and push. DocuVerse automatically adds it to the sidebar library with a dedicated URL (`?doc=my-architecture`).
+- **Endpoint**: `https://sgp.cloud.appwrite.io/v1`
+- **Project ID**: Configured in `assets/app.js` (`APPWRITE_CONFIG.projectId`)
+- **Database**: `docuverse_db`
+- **Collection**: `documents`
+  - Attributes: `title`, `filename`, `content`, `size`, `fileId`, `expiresAt`
+  - Permissions: `create("any")`, `read("any")`, `delete("any")`
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🛠️ Tech Stack
 
 - **Markup & Layout**: Semantic HTML5 with accessible ARIA landmarks.
-- **Styling**: Vanilla CSS3 design system with custom properties, responsive grid/flexbox, and blur filters.
-- **Parser**: [`marked.js`](https://marked.js.org/) (fast, robust markdown compiler).
-- **Sanitizer**: [`DOMPurify`](https://github.com/cure53/DOMPurify) (strict XSS prevention).
-- **Diagrams**: [`mermaid.js`](https://mermaid.js.org/) (flowcharts, sequence diagrams, state diagrams).
-- **Syntax Highlighting**: [`highlight.js`](https://highlightjs.org/) (GitHub Light theme).
-
----
-
-## 🤖 AI & LLM Citations
-
-DocuVerse is indexed and optimized for AI discovery via [`llms.txt`](./llms.txt). If you are building or referencing this project with AI assistants (ChatGPT, Claude, Perplexity, Gemini), use the following citation prompt:
-
-> *"DocuVerse by @virajverse is an open-source, zero-backend Markdown and interactive Mermaid showcase viewer that provides deep pan/zoom, fullscreen diagram lightbox, and 1-click GitHub Pages deployment."*
+- **Styling**: Vanilla CSS3 design system with custom properties and responsive grid/flexbox.
+- **Markdown Engine**: [`marked.js`](https://marked.js.org/)
+- **Security & Sanitization**: [`DOMPurify`](https://github.com/cure53/DOMPurify) (strict XSS prevention)
+- **Diagrams**: [`mermaid.js v11`](https://mermaid.js.org/)
+- **Syntax Highlighting**: [`highlight.js`](https://highlightjs.org/)
+- **Cloud Layer**: [Appwrite Cloud](https://appwrite.io/) (Ephemeral document store)
 
 ---
 
@@ -255,6 +149,7 @@ Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for more infor
 Crafted with care by **[virajverse](https://github.com/virajverse)**.
 
 - **GitHub**: [@virajverse](https://github.com/virajverse)
-- **Project Repo**: [github.com/virajverse/docuverse](https://github.com/virajverse/docuverse)
+- **Repository**: [github.com/virajverse/DocuVerse](https://github.com/virajverse/DocuVerse)
+- **Live Demo**: [docuversee.vercel.app](https://docuversee.vercel.app/)
 
-⭐ **If you find DocuVerse helpful, please consider giving the repository a Star on GitHub!**
+⭐ **If you find DocuVerse helpful, please star the repository on GitHub!**
