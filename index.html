@@ -153,7 +153,7 @@
           <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
           <strong>Open Markdown Document</strong>
         </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="open-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
+        <button class="modal-close-btn" id="open-modal-close" title="Close (Esc)" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body">
         <div class="local-file-section">
@@ -184,7 +184,6 @@
         </details>
       </div>
     </div>
-  </div>
   </div>
 
   <!-- Mermaid Interactive Zoom Modal -->
@@ -219,27 +218,29 @@
     <div class="open-modal-card share-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
-          <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></span>
+          <span class="open-modal-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </span>
           <strong>Share Document to Cloud</strong>
         </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="share-modal-close" title="Close" aria-label="Close">✕</button>
+        <button class="modal-close-btn" id="share-modal-close" title="Close" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body">
-        <p class="tab-description">This document will be saved to Appwrite Cloud with a temporary auto-delete timer:</p>
+        <p class="tab-description">This document will be published to Appwrite Cloud with your chosen retention period:</p>
 
         <div class="share-expiry-group">
           <label class="expiry-radio-card active" id="expiry-card-24">
             <input type="radio" name="share-expiry" value="24" checked>
             <div class="expiry-radio-content">
               <span class="expiry-radio-title">⏱️ 24 Hours</span>
-              <span class="expiry-radio-desc">Auto-deletes in 24 hours</span>
+              <span class="expiry-radio-desc">Temporary · Auto-deletes in 24h</span>
             </div>
           </label>
           <label class="expiry-radio-card" id="expiry-card-48">
             <input type="radio" name="share-expiry" value="48">
             <div class="expiry-radio-content">
               <span class="expiry-radio-title">⏱️ 48 Hours</span>
-              <span class="expiry-radio-desc">Auto-deletes in 48 hours</span>
+              <span class="expiry-radio-desc">Temporary · Auto-deletes in 48h</span>
             </div>
           </label>
           <label class="expiry-radio-card" id="expiry-card-perm">
@@ -268,10 +269,12 @@
     <div class="open-modal-card auth-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
-          <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-          <strong id="auth-modal-header-text">Account Access</strong>
+          <span class="open-modal-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <strong id="auth-modal-header-text">Sign In to DocuVerse</strong>
         </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="auth-modal-close" title="Close" aria-label="Close">✕</button>
+        <button class="modal-close-btn" id="auth-modal-close" title="Close" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body">
         <div class="auth-tabs">
@@ -291,7 +294,7 @@
           </button>
         </div>
 
-        <div class="auth-or-divider"><span>OR WITH EMAIL</span></div>
+        <div class="auth-or-divider"><span>OR CONTINUE WITH EMAIL</span></div>
 
         <!-- Sign In Form -->
         <form class="auth-form" id="signin-form">
@@ -341,45 +344,55 @@
     <div class="open-modal-card profile-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
-          <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <span class="open-modal-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
           <strong>Account Profile</strong>
         </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="profile-modal-close" title="Close" aria-label="Close">✕</button>
+        <button class="modal-close-btn" id="profile-modal-close" title="Close" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body">
         <div class="profile-card-header">
           <div class="profile-avatar-circle" id="profile-avatar-initials">U</div>
           <div class="profile-info-text">
-            <strong class="profile-user-name" id="profile-user-name">User Name</strong>
-            <span class="profile-user-email" id="profile-user-email">user@example.com</span>
-            <span class="profile-perm-badge">♾️ Permanent Storage Active</span>
+            <div class="profile-user-name" id="profile-user-name">User Name</div>
+            <div class="profile-user-email" id="profile-user-email">user@example.com</div>
+            <div class="profile-perm-badge">
+              <span class="badge-status-dot"></span>
+              <span>Permanent Storage Active</span>
+            </div>
           </div>
         </div>
 
-        <div class="profile-section-divider"></div>
-
         <div class="profile-password-section">
-          <h4 class="profile-sub-title">Change Password</h4>
-          <p class="profile-sub-desc">You are logged in — update your password directly below with zero OTP hassle:</p>
+          <div class="profile-section-heading">
+            <svg class="heading-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div>
+              <h4 class="profile-sub-title">Change Password</h4>
+              <p class="profile-sub-desc">Update your password or convert your temporary admin access key.</p>
+            </div>
+          </div>
           <form id="change-password-form">
             <div class="form-group">
-              <label for="change-old-password">Current Password (or Admin Temp Password)</label>
+              <label for="change-old-password">Current Password (or Admin Temp Key)</label>
               <input type="password" id="change-old-password" placeholder="••••••••" required autocomplete="current-password">
             </div>
             <div class="form-group">
-              <label for="change-new-password">New Password (min 8 characters)</label>
-              <input type="password" id="change-new-password" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+              <label for="change-new-password">New Password</label>
+              <input type="password" id="change-new-password" placeholder="Min. 8 characters" minlength="8" required autocomplete="new-password">
             </div>
             <div class="auth-error-msg" id="password-error" hidden></div>
             <div class="auth-success-msg" id="password-success" hidden></div>
-            <button type="submit" class="secondary-button" id="update-password-submit-btn">
+            <button type="submit" class="primary-button update-password-btn" id="update-password-submit-btn">
+              <svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               Update Password
             </button>
           </form>
         </div>
 
         <div class="profile-footer-row">
-          <button type="button" class="doc-delete-btn-full" id="logout-btn">
+          <span class="profile-session-hint">Cloud Session Active</span>
+          <button type="button" class="logout-btn" id="logout-btn">
             <svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             Log Out
           </button>
@@ -394,34 +407,53 @@
     <div class="open-modal-card forgot-modal-card">
       <div class="open-modal-header">
         <div class="open-modal-title">
-          <span class="open-modal-icon">🔑</span>
-          <strong>Reset Your Password</strong>
+          <span class="open-modal-icon forgot-icon-accent">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <strong>Reset Account Password</strong>
         </div>
-        <button class="diagram-ctrl-btn modal-close-btn" id="forgot-modal-close" title="Close" aria-label="Close">✕</button>
+        <button class="modal-close-btn" id="forgot-modal-close" title="Close" aria-label="Close">✕</button>
       </div>
       <div class="open-modal-body text-center">
-        <div class="forgot-hero-icon">✈️</div>
-        <h3 class="forgot-title">Direct Admin Password Reset</h3>
+        <div class="forgot-hero-badge">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18.892-1.284 5.923-1.854 8.528-.242 1.103-.647 1.472-1.04 1.508-.853.078-1.5-.564-2.327-1.106-1.294-.848-2.025-1.376-3.28-2.203-1.45-.956-.51-1.482.316-2.342.216-.225 3.974-3.642 4.047-3.953.009-.039.017-.184-.07-.261-.087-.077-.215-.051-.307-.03-.131.029-2.213 1.408-6.248 4.13-.591.407-1.126.606-1.605.595-.529-.012-1.545-.299-2.302-.545-.929-.302-1.668-.462-1.603-.976.034-.268.404-.543 1.11-.825 4.348-1.895 7.25-3.145 8.706-3.751 4.143-1.726 5.005-2.025 5.566-2.035.123-.002.398.029.576.173.15.122.191.286.208.408.017.123.037.408.02.632z"/></svg>
+        </div>
+        <h3 class="forgot-title">Direct Admin Recovery</h3>
         <p class="forgot-desc">
-          For maximum account security, temporary passwords are provided directly by administrator <strong>@virajverse</strong> without email delays or OTP hassles.
+          For guaranteed account security, temporary access keys are issued directly by administrator <strong>@virajverse</strong>.
         </p>
         <div class="forgot-steps-card">
           <div class="forgot-step">
-            <span class="step-num">1</span>
-            <span>Message <strong>@virajverse</strong> on Telegram with your registered email.</span>
+            <div class="step-indicator">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="step-content">
+              <strong>1. Contact Administrator</strong>
+              <span>Message <strong>@virajverse</strong> on Telegram with your registered email.</span>
+            </div>
           </div>
           <div class="forgot-step">
-            <span class="step-num">2</span>
-            <span>Receive an instant temporary access password.</span>
+            <div class="step-indicator">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="step-content">
+              <strong>2. Receive Access Key</strong>
+              <span>Get an instant temporary password to log into your account.</span>
+            </div>
           </div>
           <div class="forgot-step">
-            <span class="step-num">3</span>
-            <span>Log in and immediately set your real permanent password in your profile!</span>
+            <div class="step-indicator">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="step-content">
+              <strong>3. Set Permanent Password</strong>
+              <span>Sign in, open Profile, and set your new secret password anytime.</span>
+            </div>
           </div>
         </div>
         <div class="forgot-actions">
           <a href="https://t.me/virajverse" target="_blank" rel="noopener" class="primary-button telegram-btn">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18.892-1.284 5.923-1.854 8.528-.242 1.103-.647 1.472-1.04 1.508-.853.078-1.5-.564-2.327-1.106-1.294-.848-2.025-1.376-3.28-2.203-1.45-.956-.51-1.482.316-2.342.216-.225 3.974-3.642 4.047-3.953.009-.039.017-.184-.07-.261-.087-.077-.215-.051-.307-.03-.131.029-2.213 1.408-6.248 4.13-.591.407-1.126.606-1.605.595-.529-.012-1.545-.299-2.302-.545-.929-.302-1.668-.462-1.603-.976.034-.268.404-.543 1.11-.825 4.348-1.895 7.25-3.145 8.706-3.751 4.143-1.726 5.005-2.025 5.566-2.035.123-.002.398.029.576.173.15.122.191.286.208.408.017.123.037.408.02.632z"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18.892-1.284 5.923-1.854 8.528-.242 1.103-.647 1.472-1.04 1.508-.853.078-1.5-.564-2.327-1.106-1.294-.848-2.025-1.376-3.28-2.203-1.45-.956-.51-1.482.316-2.342.216-.225 3.974-3.642 4.047-3.953.009-.039.017-.184-.07-.261-.087-.077-.215-.051-.307-.03-.131.029-2.213 1.408-6.248 4.13-.591.407-1.126.606-1.605.595-.529-.012-1.545-.299-2.302-.545-.929-.302-1.668-.462-1.603-.976.034-.268.404-.543 1.11-.825 4.348-1.895 7.25-3.145 8.706-3.751 4.143-1.726 5.005-2.025 5.566-2.035.123-.002.398.029.576.173.15.122.191.286.208.408.017.123.037.408.02.632z"/></svg>
             Message @virajverse on Telegram
           </a>
           <button type="button" class="secondary-button" id="forgot-back-btn">Back to Sign In</button>

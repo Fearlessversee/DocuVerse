@@ -1890,7 +1890,7 @@
           if (!appwriteAccount) initAppwriteAuth();
           await appwriteAccount.updatePassword(newPass, oldPass);
           if (succEl) {
-            succEl.textContent = "Password updated successfully! Zero OTP hassle.";
+            succEl.textContent = "Password updated successfully!";
             succEl.hidden = false;
           }
           $("change-old-password").value = "";
@@ -1902,7 +1902,7 @@
             errEl.hidden = false;
           }
         } finally {
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Update Password"; }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Update Password'; }
         }
       });
     }
