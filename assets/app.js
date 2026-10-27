@@ -17,6 +17,16 @@
   const STORAGE_KEY_DOCS = "docuverse_uploaded_docs_v1";
   const STORAGE_KEY_ACTIVE = "docuverse_active_doc_id";
 
+  /* ----------------------------------------------------
+     Appwrite Cloud Configuration (Dedicated Sharing Layer)
+  ---------------------------------------------------- */
+  const APPWRITE_CONFIG = {
+    endpoint: "https://sgp.cloud.appwrite.io/v1",
+    projectId: "6ae0606a00131d3f9e1e",
+    databaseId: "docuverse_db",
+    collectionId: "documents"
+  };
+
   function getUploadedDocs() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_DOCS);
@@ -53,7 +63,8 @@
       content,
       createdAt: Date.now(),
       size: content.length,
-      isUploaded: true
+      isUploaded: true,
+      cloudId: null
     };
 
     const existingIndex = docs.findIndex(d => d.filename === cleanName && d.title === cleanTitle);
@@ -161,7 +172,7 @@
 
         const metaSpan = document.createElement("span");
         metaSpan.className = "doc-item-meta";
-        metaSpan.textContent = "Uploaded · Local";
+        metaSpan.textContent = doc.cloudId ? "Uploaded · Cloud Synced" : "Uploaded · Local";
 
         info.append(titleSpan, metaSpan);
         a.append(icon, info);
@@ -924,7 +935,7 @@
      Document Loading & Rendering Engine
   ---------------------------------------------------- */
   async function loadCustomUploadedDoc(doc, changeHistory = true) {
-    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true };
+    activeDoc = { id: doc.id, title: doc.title, file: doc.filename, content: doc.content, isUploaded: true, cloudId: doc.cloudId || null, expiresAt: doc.expiresAt || 0 };
     currentMarkdown = doc.content;
     currentFilename = doc.filename;
 
@@ -1030,6 +1041,106 @@
     }
   }
 
+      function showShareModal() {
+    const modal = $("share-modal");
+    if (modal) {
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+  }
+
+  function hideShareModal() {
+    const modal = $("share-modal");
+    if (modal) {
+      modal.hidden = true;
+      document.body.style.overflow = "";
+    }
+  }
+
+  async function loadFromAppwriteCloud(shareId) {
+    article.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Fetching shared document from Appwrite Cloud…</p></div>';
+    try {
+      const url = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents/${encodeURIComponent(shareId)}`;
+      const res = await fetch(url, {
+        headers: {
+          "X-Appwrite-Project": APPWRITE_CONFIG.projectId
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Cloud document not found or expired (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      const now = Date.now();
+
+      // Check auto-delete / expiration timer (24h / 48h)
+      if (data.expiresAt && data.expiresAt > 0 && now > data.expiresAt) {
+        // Auto-delete immediately from Appwrite Database
+        try {
+          await fetch(url, {
+            method: "DELETE",
+            headers: { "X-Appwrite-Project": APPWRITE_CONFIG.projectId }
+          });
+        } catch (_) {}
+
+        article.innerHTML = `
+          <div class="expired-document-card">
+            <div class="expired-icon">⏳</div>
+            <h2 style="margin:0 0 8px;font-size:22px;">Document Link Expired</h2>
+            <p style="color:var(--muted);max-width:440px;margin:8px auto 24px;font-size:14px;line-height:1.6;">
+              This shared document had an auto-delete timer (24h/48h) and has been automatically removed from the database.
+            </p>
+            <a href="${location.pathname}" class="primary-button" style="display:inline-flex;text-decoration:none;">
+              Open DocuVerse
+            </a>
+          </div>
+        `;
+        toast("This document link has expired and was auto-deleted.");
+        return;
+      }
+
+      const docContent = data.content || "";
+      const docTitle = data.title || data.filename || "Shared Document";
+      const docFilename = data.filename || "shared.md";
+
+      // Cache locally in sidebar
+      const savedDoc = saveUploadedDoc(docTitle, docFilename, docContent);
+      if (savedDoc) {
+        savedDoc.cloudId = shareId;
+        savedDoc.expiresAt = data.expiresAt || 0;
+        const docs = getUploadedDocs();
+        const found = docs.find(d => d.id === savedDoc.id);
+        if (found) {
+          found.cloudId = shareId;
+          found.expiresAt = data.expiresAt || 0;
+          persistUploadedDocs(docs);
+        }
+        await loadCustomUploadedDoc(savedDoc, false);
+      } else {
+        await renderCustomMarkdown(docContent, docTitle, docFilename);
+      }
+
+      // Add expiration banner on top if it has an expiration timer
+      if (data.expiresAt && data.expiresAt > now) {
+        const remainingHours = Math.max(1, Math.round((data.expiresAt - now) / 3600000));
+        const banner = document.createElement("div");
+        banner.className = "cloud-expiry-banner";
+        banner.innerHTML = `
+          <span class="cloud-expiry-badge">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Temporary Cloud Document
+          </span>
+          <span class="cloud-expiry-timer">⏳ Auto-deletes in ~${remainingHours} hours</span>
+        `;
+        article.prepend(banner);
+      }
+
+      toast("Shared document loaded from Appwrite Cloud!");
+    } catch (err) {
+      article.innerHTML = `<div class="loading-state"><p>Could not load shared document from cloud.</p><p style="color:var(--muted);font-size:12px;">${err.message}</p></div>`;
+      toast("Could not load document from cloud.");
+    }
+  }
+
   async function routeAndLoad() {
     // 1. Direct Base64 Hash Data (#data= or #md=)
     const hashData = decodeHashData();
@@ -1040,21 +1151,28 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    // 2. Query param ?github=
+    // 2. Appwrite Cloud Shared Doc (?share=)
+    const shareParam = params.get("share");
+    if (shareParam) {
+      await loadFromAppwriteCloud(shareParam);
+      return;
+    }
+
+    // 3. Query param ?github=
     const githubParam = params.get("github");
     if (githubParam) {
       await loadFromRemoteUrl(githubParam);
       return;
     }
 
-    // 3. Query param ?url=
+    // 4. Query param ?url=
     const urlParam = params.get("url");
     if (urlParam) {
       await loadFromRemoteUrl(urlParam);
       return;
     }
 
-    // 4. Query param ?gist=
+    // 5. Query param ?gist=
     const gistParam = params.get("gist");
     if (gistParam) {
       const gistUrl = gistParam.startsWith("http") ? gistParam : ("https://gist.github.com/" + gistParam);
@@ -1062,12 +1180,12 @@
       return;
     }
 
-    // 5. Query param ?doc= or Local Database check
+    // 6. Query param ?doc= or Local Database check
     const docId = params.get("doc");
     const uploadedDocs = getUploadedDocs();
 
     if (docId) {
-      const customMatch = uploadedDocs.find(d => d.id === docId);
+      const customMatch = uploadedDocs.find(d => d.id === docId || d.cloudId === docId);
       if (customMatch) {
         await loadCustomUploadedDoc(customMatch, false);
         return;
@@ -1075,6 +1193,11 @@
       const sampleMatch = DOCS.find(d => d.id === docId);
       if (sampleMatch) {
         await loadDocument(sampleMatch, false);
+        return;
+      }
+      // If docId is unknown locally, check if it is a cloud document ID
+      if (docId.length >= 10) {
+        await loadFromAppwriteCloud(docId);
         return;
       }
     }
@@ -1115,21 +1238,106 @@
     if (lightLink) lightLink.disabled = false;
   }
 
-  async function shareLink() {
-    let url = window.location.href;
-    // If active document is custom and not in URL, create a sharable hash link if reasonable size (<8kb)
-    if (activeDoc && activeDoc.id === "custom" && !location.search && !location.hash) {
+  async function copyToClipboard(text, successMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(successMsg || "Link copied to clipboard!");
+    } catch (_) {
+      window.prompt("Copy link:", text);
+    }
+  }
+
+  async function executeCloudShare(durationHours = 24) {
+    toast(`Saving to Appwrite Cloud (Auto-deletes in ${durationHours}h)...`);
+    const shareBtn = $("copy-link-button");
+    if (shareBtn) shareBtn.disabled = true;
+
+    try {
+      const expiresAt = Date.now() + (durationHours * 60 * 60 * 1000);
+      const uploadUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents`;
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "X-Appwrite-Project": APPWRITE_CONFIG.projectId,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          documentId: "unique()",
+          data: {
+            title: activeDoc.title || "Shared Document",
+            filename: activeDoc.file || activeDoc.filename || "document.md",
+            content: currentMarkdown,
+            size: (activeDoc.size || currentMarkdown.length),
+            fileId: activeDoc.id || "",
+            expiresAt: expiresAt
+          }
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Appwrite Error ${res.status}`);
+      }
+
+      const cloudDoc = await res.json();
+      const cloudId = cloudDoc.$id;
+
+      // Save cloudId & expiresAt in local doc so future clicks know status
+      activeDoc.cloudId = cloudId;
+      activeDoc.expiresAt = expiresAt;
+
+      const docs = getUploadedDocs();
+      const existing = docs.find(d => d.id === activeDoc.id);
+      if (existing) {
+        existing.cloudId = cloudId;
+        existing.expiresAt = expiresAt;
+        persistUploadedDocs(docs);
+      }
+
+      drawDocumentList();
+      const url = `${location.origin}${location.pathname}?share=${encodeURIComponent(cloudId)}`;
+      history.replaceState({}, "", `?share=${encodeURIComponent(cloudId)}`);
+      await copyToClipboard(url, `Saved to Appwrite Cloud (Auto-deletes in ${durationHours}h) & link copied!`);
+    } catch (err) {
+      console.warn("Appwrite upload failed, fallback to hash:", err);
       if (currentMarkdown.length < 8000) {
         const encoded = encodeHashData(currentMarkdown);
-        url = `${location.origin}${location.pathname}#data=${encoded}`;
+        const url = `${location.origin}${location.pathname}#data=${encoded}`;
+        await copyToClipboard(url, "Share link copied (fallback offline mode)");
+      } else {
+        toast("Cloud save failed: " + err.message);
       }
+    } finally {
+      if (shareBtn) shareBtn.disabled = false;
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("Sharable document link copied to clipboard!");
-    } catch (_) {
-      window.prompt("Copy this document link:", url);
+  }
+
+  async function shareLink() {
+    let url = window.location.href;
+
+    // A. Built-in Guide Document: share standard doc URL
+    if (activeDoc && !activeDoc.isUploaded && activeDoc.id !== "custom") {
+      url = `${location.origin}${location.pathname}?doc=${encodeURIComponent(activeDoc.id)}`;
+      await copyToClipboard(url, "Document link copied to clipboard!");
+      return;
     }
+
+    // B. Uploaded / Custom Document: Show 24h/48h auto-delete modal!
+    if (activeDoc && (activeDoc.isUploaded || activeDoc.id === "custom")) {
+      // If already uploaded and still valid (not expired), copy existing link
+      if (activeDoc.cloudId && activeDoc.expiresAt && activeDoc.expiresAt > Date.now()) {
+        const remainingHours = Math.max(1, Math.round((activeDoc.expiresAt - Date.now()) / 3600000));
+        url = `${location.origin}${location.pathname}?share=${encodeURIComponent(activeDoc.cloudId)}`;
+        await copyToClipboard(url, `Cloud share link copied! (Expires in ~${remainingHours}h)`);
+        return;
+      }
+
+      // Open Share Modal to choose 24h or 48h
+      showShareModal();
+      return;
+    }
+
+    await copyToClipboard(url, "Link copied to clipboard!");
   }
 
   function findInDocument(query) {

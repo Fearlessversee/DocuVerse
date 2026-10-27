@@ -186,5 +186,47 @@
       </div>
     </div>
   </div>
+
+  <!-- Share to Cloud with Expiration Modal -->
+  <div class="open-modal" id="share-modal" hidden role="dialog" aria-modal="true" aria-label="Share Document">
+    <div class="open-modal-backdrop" id="share-modal-backdrop"></div>
+    <div class="open-modal-card share-modal-card">
+      <div class="open-modal-header">
+        <div class="open-modal-title">
+          <span class="open-modal-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></span>
+          <strong>Share Document to Cloud</strong>
+        </div>
+        <button class="diagram-ctrl-btn modal-close-btn" id="share-modal-close" title="Close" aria-label="Close">✕</button>
+      </div>
+      <div class="open-modal-body">
+        <p class="tab-description">This document will be saved to Appwrite Cloud with a temporary auto-delete timer:</p>
+
+        <div class="share-expiry-group">
+          <label class="expiry-radio-card active" id="expiry-card-24">
+            <input type="radio" name="share-expiry" value="24" checked>
+            <div class="expiry-radio-content">
+              <span class="expiry-radio-title">⏱️ 24 Hours</span>
+              <span class="expiry-radio-desc">Auto-deletes from cloud in 24 hours</span>
+            </div>
+          </label>
+          <label class="expiry-radio-card" id="expiry-card-48">
+            <input type="radio" name="share-expiry" value="48">
+            <div class="expiry-radio-content">
+              <span class="expiry-radio-title">⏱️ 48 Hours</span>
+              <span class="expiry-radio-desc">Auto-deletes from cloud in 48 hours</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="share-actions-row">
+          <button type="button" class="secondary-button" id="share-modal-cancel">Cancel</button>
+          <button type="button" class="primary-button" id="confirm-share-cloud-btn">
+            <svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Generate & Copy Link
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
