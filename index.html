@@ -78,6 +78,20 @@
       <nav class="document-list" id="document-list" aria-label="Documents"></nav>
       <div class="sidebar-spacer"></div>
       <button class="sidebar-install-btn" id="sidebar-install-btn" hidden type="button"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Install App</button>
+      <!-- Sidebar Account Box (Mobile & Desktop) -->
+      <div class="sidebar-account-box" id="sidebar-account-box">
+        <button type="button" class="sidebar-signin-btn" id="sidebar-signin-btn" title="Sign In to unlock permanent cloud storage">
+          <svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Sign In / Sign Up</span>
+        </button>
+        <button type="button" class="sidebar-user-card" id="sidebar-user-card" hidden title="Open Account Profile">
+          <div class="sidebar-user-avatar" id="sidebar-user-avatar">U</div>
+          <div class="sidebar-user-info">
+            <span class="sidebar-user-name" id="sidebar-user-name">Account</span>
+            <span class="sidebar-user-role">Permanent Storage ♾️</span>
+          </div>
+        </button>
+      </div>
       <div class="sidebar-foot">DocuVerse v1.1 · by <a href="https://github.com/virajverse" target="_blank" rel="noopener">virajverse</a></div>
     </aside>
 
@@ -88,6 +102,17 @@
         <div class="top-actions">
           <button class="pwa-install-btn" id="pwa-install-btn" hidden type="button" title="Install DocuVerse App on mobile or desktop"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Install App</button>
           <button class="open-doc-topbar-btn" id="open-doc-topbar" title="Open any Markdown from URL or GitHub"><svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Open URL</button>
+          
+          <!-- Sign In / Profile Trigger in Topbar -->
+          <button class="auth-topbar-btn" id="auth-signin-btn" title="Sign In or Create Account">
+            <svg class="btn-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Sign In
+          </button>
+          <button class="user-pill-btn" id="user-profile-btn" hidden title="Open Account Profile">
+            <span class="user-avatar-dot"></span>
+            <span id="user-display-name">Account</span>
+          </button>
+
           <label class="search-box" for="doc-search"><span class="search-icon">⌕</span><input id="doc-search" type="search" placeholder="Find in document…" autocomplete="off"><kbd>Ctrl K</kbd></label>
         </div>
       </header>
