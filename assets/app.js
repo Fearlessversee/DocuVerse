@@ -1080,12 +1080,24 @@
     const userDisplayName = $("user-display-name");
     const permDescText = $("perm-desc-text");
 
+    const sideSigninBtn = $("sidebar-signin-btn");
+    const sideUserCard = $("sidebar-user-card");
+    const sideUserName = $("sidebar-user-name");
+    const sideUserAvatar = $("sidebar-user-avatar");
+
     if (currentUser) {
       if (signinBtn) signinBtn.hidden = true;
       if (userBtn) userBtn.hidden = false;
+      if (sideSigninBtn) sideSigninBtn.hidden = true;
+      if (sideUserCard) sideUserCard.hidden = false;
+
       const name = currentUser.name || currentUser.email.split("@")[0] || "Account";
       if (userDisplayName) userDisplayName.textContent = name;
+      if (sideUserName) sideUserName.textContent = name;
       if (permDescText) permDescText.textContent = "Never expires · Saved to account";
+
+      const initial = (currentUser.name || currentUser.email || "U").charAt(0).toUpperCase();
+      if (sideUserAvatar) sideUserAvatar.textContent = initial;
 
       const profileName = $("profile-user-name");
       const profileEmail = $("profile-user-email");
@@ -1093,12 +1105,13 @@
       if (profileName) profileName.textContent = currentUser.name || "DocuVerse User";
       if (profileEmail) profileEmail.textContent = currentUser.email;
       if (profileInitials) {
-        const initial = (currentUser.name || currentUser.email || "U").charAt(0).toUpperCase();
         profileInitials.textContent = initial;
       }
     } else {
       if (signinBtn) signinBtn.hidden = false;
       if (userBtn) userBtn.hidden = true;
+      if (sideSigninBtn) sideSigninBtn.hidden = false;
+      if (sideUserCard) sideUserCard.hidden = true;
       if (permDescText) permDescText.textContent = "Never expires · (Sign In Required)";
     }
   }
@@ -1721,6 +1734,11 @@
   const userProfileBtn = $("user-profile-btn");
   if (authSigninBtn) authSigninBtn.addEventListener("click", () => showAuthModal("signin"));
   if (userProfileBtn) userProfileBtn.addEventListener("click", showProfileModal);
+
+  const sideSigninBtn = $("sidebar-signin-btn");
+  const sideUserCard = $("sidebar-user-card");
+  if (sideSigninBtn) sideSigninBtn.addEventListener("click", () => showAuthModal("signin"));
+  if (sideUserCard) sideUserCard.addEventListener("click", showProfileModal);
 
   // Auth Modal Controls
   const authModal = $("auth-modal");
