@@ -1041,6 +1041,73 @@ kbd {
   text-align: left;
 }
 
+.diagram-error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  margin: 16px auto;
+  max-width: 95%;
+  text-align: left;
+}
+
+.diagram-error-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.diagram-error-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.diagram-error-content h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.diagram-error-content p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.diagram-source-details {
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.diagram-source-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #b91c1c;
+  outline: none;
+  user-select: none;
+}
+
+.diagram-source-details pre {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* ----------------------------------------------------
    Mermaid Fullscreen Lightbox Modal
 ---------------------------------------------------- */
