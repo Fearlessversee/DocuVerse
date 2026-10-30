@@ -569,6 +569,166 @@
   }
 
   /* ----------------------------------------------------
+     Vector-Crisp SVG Pan & Zoom Engine (ViewBox Manipulation)
+  ---------------------------------------------------- */
+  function makeSvgPanZoom(viewport, svg, onUpdate) {
+    let baseVx = 0, baseVy = 0, baseVw = 1000, baseVh = 700;
+    const rawVb = svg.getAttribute("viewBox");
+    if (rawVb) {
+      const parts = rawVb.trim().split(/[\s,]+/).map(Number);
+      if (parts.length === 4 && parts.every(n => !isNaN(n))) {
+        baseVx = parts[0];
+        baseVy = parts[1];
+        baseVw = parts[2];
+        baseVh = parts[3];
+      }
+    } else {
+      const w = parseFloat(svg.getAttribute("width")) || svg.clientWidth || 1000;
+      const h = parseFloat(svg.getAttribute("height")) || svg.clientHeight || 700;
+      baseVw = Math.max(w, 400);
+      baseVh = Math.max(h, 300);
+    }
+
+    svg.setAttribute("viewBox", `${baseVx} ${baseVy} ${baseVw} ${baseVh}`);
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    svg.style.maxWidth = "100%";
+    svg.style.maxHeight = "100%";
+    svg.style.display = "block";
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+    let scale = 1;
+    let currentVx = baseVx;
+    let currentVy = baseVy;
+    let currentVw = baseVw;
+    let currentVh = baseVh;
+
+    function applyViewBox() {
+      svg.setAttribute("viewBox", `${currentVx} ${currentVy} ${currentVw} ${currentVh}`);
+      if (onUpdate) onUpdate(scale);
+    }
+
+    function setScale(newScale, clientX, clientY) {
+      const clamped = Math.min(6.0, Math.max(0.3, newScale));
+      if (clamped === 1) {
+        reset();
+        return;
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      let rx = 0.5, ry = 0.5;
+      if (clientX !== undefined && clientY !== undefined && rect.width > 0 && rect.height > 0) {
+        rx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        ry = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      }
+
+      const focalX = currentVx + rx * currentVw;
+      const focalY = currentVy + ry * currentVh;
+
+      const newVw = baseVw / clamped;
+      const newVh = baseVh / clamped;
+
+      currentVx = focalX - rx * newVw;
+      currentVy = focalY - ry * newVh;
+      currentVw = newVw;
+      currentVh = newVh;
+      scale = clamped;
+      applyViewBox();
+    }
+
+    function reset() {
+      scale = 1;
+      currentVx = baseVx;
+      currentVy = baseVy;
+      currentVw = baseVw;
+      currentVh = baseVh;
+      applyViewBox();
+    }
+
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const activePointers = new Map();
+    let initialPinchDistance = 0;
+    let initialPinchScale = 1;
+
+    viewport.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointers.size === 1) {
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        viewport.classList.add("is-dragging");
+        try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+      } else if (activePointers.size === 2) {
+        isDragging = false;
+        viewport.classList.remove("is-dragging");
+        const pts = [...activePointers.values()];
+        initialPinchDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        initialPinchScale = scale;
+      }
+    });
+
+    viewport.addEventListener("pointermove", (e) => {
+      if (activePointers.has(e.pointerId)) {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      if (isDragging && activePointers.size === 1) {
+        const rect = viewport.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const dx = e.clientX - lastX;
+          const dy = e.clientY - lastY;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          currentVx -= dx * (currentVw / rect.width);
+          currentVy -= dy * (currentVh / rect.height);
+          applyViewBox();
+        }
+      } else if (activePointers.size === 2 && initialPinchDistance > 0) {
+        const pts = [...activePointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        const newScale = initialPinchScale * (dist / initialPinchDistance);
+        setScale(newScale, midX, midY);
+      }
+    });
+
+    const endPointer = (e) => {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size === 0) {
+        isDragging = false;
+        viewport.classList.remove("is-dragging");
+      }
+      if (activePointers.size < 2) {
+        initialPinchDistance = 0;
+      }
+      try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+
+    viewport.addEventListener("pointerup", endPointer);
+    viewport.addEventListener("pointercancel", endPointer);
+
+    viewport.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 0.88;
+      setScale(scale * factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    viewport.addEventListener("dblclick", () => reset());
+
+    return {
+      zoomIn: () => setScale(scale * 1.25),
+      zoomOut: () => setScale(scale / 1.25),
+      reset: () => reset(),
+      getScale: () => scale
+    };
+  }
+
+  /* ----------------------------------------------------
      Fullscreen Modal Diagram Viewer
   ---------------------------------------------------- */
   let activeModalController = null;
@@ -581,21 +741,23 @@
     if (!modal || !modalCanvas || !modalViewport) return;
 
     modalCanvas.replaceChildren();
+    modalCanvas.style.transform = "";
 
-    // Clone the SVG for crisp rendering in modal
+    // Clone the SVG for crisp vector rendering in modal
     const clonedSvg = svgElement.cloneNode(true);
     clonedSvg.removeAttribute("style");
-    clonedSvg.style.maxWidth = "none";
+    clonedSvg.style.width = "100%";
+    clonedSvg.style.height = "100%";
     clonedSvg.style.display = "block";
-    clonedSvg.style.margin = "auto";
+    clonedSvg.style.margin = "0";
     modalCanvas.append(clonedSvg);
 
     modal.hidden = false;
     document.body.style.overflow = "hidden";
 
-    activeModalController = makePanZoom(modalViewport, modalCanvas, (currentScale) => {
+    activeModalController = makeSvgPanZoom(modalViewport, clonedSvg, (currentScale) => {
       if (modalPercent) modalPercent.textContent = `${Math.round(currentScale * 100)}%`;
-    }, true);
+    });
 
     if (modalPercent) modalPercent.textContent = "100%";
 
@@ -609,21 +771,10 @@
     if (zoomOutBtn) zoomOutBtn.onclick = () => activeModalController.zoomOut();
     if (zoomResetBtn) zoomResetBtn.onclick = () => activeModalController.reset();
 
-    function closeModal() {
-      modal.hidden = true;
-      document.body.style.overflow = "";
-      modalCanvas.replaceChildren();
-      activeModalController = null;
-    }
-
-    if (closeBtn) closeBtn.onclick = closeModal;
-    if (backdrop) backdrop.onclick = closeModal;
-
     const handleKeydown = (e) => {
       if (modal.hidden) return;
       if (e.key === "Escape") {
         closeModal();
-        document.removeEventListener("keydown", handleKeydown);
       } else if (e.key === "+" || e.key === "=") {
         if (activeModalController) activeModalController.zoomIn();
       } else if (e.key === "-") {
@@ -632,6 +783,18 @@
         if (activeModalController) activeModalController.reset();
       }
     };
+
+    function closeModal() {
+      modal.hidden = true;
+      document.body.style.overflow = "";
+      modalCanvas.replaceChildren();
+      modalCanvas.style.transform = "";
+      activeModalController = null;
+      document.removeEventListener("keydown", handleKeydown);
+    }
+
+    if (closeBtn) closeBtn.onclick = closeModal;
+    if (backdrop) backdrop.onclick = closeModal;
     document.addEventListener("keydown", handleKeydown);
   }
 
@@ -705,6 +868,11 @@
 
     // 4. Render Mermaid SVGs and attach interactive pan & zoom
     if (window.mermaid) {
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_) {}
+      }
       window.mermaid.initialize({
         startOnLoad: false,
         securityLevel: "strict",
@@ -724,7 +892,7 @@
           nodeBorder: "#818cf8",
           mainBkg: "#f0f4ff"
         },
-        flowchart: { htmlLabels: true, curve: "basis" },
+        flowchart: { htmlLabels: true, curve: "basis", padding: 20 },
         sequence: { useMaxWidth: true }
       });
 
@@ -1061,17 +1229,26 @@
     }
   }
 
+  function isUserLoggedIn() {
+    return !!(currentUser && currentUser.email && currentUser.email.trim().length > 0);
+  }
+
   async function checkUserSession() {
     if (!appwriteAccount) initAppwriteAuth();
     if (!appwriteAccount) return;
 
     try {
-      currentUser = await appwriteAccount.get();
-      updateUserAuthUI();
+      const u = await appwriteAccount.get();
+      // Anonymous or guest Appwrite sessions lack an email. Only accounts with valid email are treated as logged-in.
+      if (u && u.email && u.email.trim().length > 0) {
+        currentUser = u;
+      } else {
+        currentUser = null;
+      }
     } catch (_) {
       currentUser = null;
-      updateUserAuthUI();
     }
+    updateUserAuthUI();
   }
 
   function updateUserAuthUI() {
@@ -1085,7 +1262,9 @@
     const sideUserName = $("sidebar-user-name");
     const sideUserAvatar = $("sidebar-user-avatar");
 
-    if (currentUser) {
+    const loggedIn = isUserLoggedIn();
+
+    if (loggedIn) {
       if (signinBtn) signinBtn.hidden = true;
       if (userBtn) userBtn.hidden = false;
       if (sideSigninBtn) sideSigninBtn.hidden = true;
@@ -1102,17 +1281,26 @@
       const profileName = $("profile-user-name");
       const profileEmail = $("profile-user-email");
       const profileInitials = $("profile-avatar-initials");
-      if (profileName) profileName.textContent = currentUser.name || "DocuVerse User";
+      const profileBadge = $("profile-perm-badge");
+      if (profileName) profileName.textContent = currentUser.name || name;
       if (profileEmail) profileEmail.textContent = currentUser.email;
-      if (profileInitials) {
-        profileInitials.textContent = initial;
-      }
+      if (profileInitials) profileInitials.textContent = initial;
+      if (profileBadge) profileBadge.hidden = false;
     } else {
       if (signinBtn) signinBtn.hidden = false;
       if (userBtn) userBtn.hidden = true;
       if (sideSigninBtn) sideSigninBtn.hidden = false;
       if (sideUserCard) sideUserCard.hidden = true;
       if (permDescText) permDescText.textContent = "Never expires · (Sign In Required)";
+
+      const profileName = $("profile-user-name");
+      const profileEmail = $("profile-user-email");
+      const profileInitials = $("profile-avatar-initials");
+      const profileBadge = $("profile-perm-badge");
+      if (profileName) profileName.textContent = "Guest";
+      if (profileEmail) profileEmail.textContent = "";
+      if (profileInitials) profileInitials.textContent = "G";
+      if (profileBadge) profileBadge.hidden = true;
     }
   }
 
@@ -1177,12 +1365,32 @@
   }
 
   function showProfileModal() {
+    // If not logged in, guests cannot open profile modal — redirect to Sign In
+    if (!isUserLoggedIn()) {
+      showAuthModal("signin");
+      return;
+    }
+
     hideAuthModal();
     hideForgotModal();
+
     const passErr = $("password-error");
     const passSucc = $("password-success");
     if (passErr) passErr.hidden = true;
     if (passSucc) passSucc.hidden = true;
+
+    // Check if user authenticated via OAuth (Google) vs Email/Password
+    const isOAuth = (currentUser && (!currentUser.passwordUpdate || currentUser.passwordUpdate === ""));
+    const oauthNotice = $("profile-oauth-notice");
+    const passSection = $("profile-password-section");
+    if (isOAuth) {
+      if (oauthNotice) oauthNotice.hidden = false;
+      if (passSection) passSection.hidden = true;
+    } else {
+      if (oauthNotice) oauthNotice.hidden = true;
+      if (passSection) passSection.hidden = false;
+    }
+
     showModalEl($("profile-modal"));
   }
 
@@ -1406,7 +1614,7 @@
     const isPermanent = (durationHours === 0);
 
     // If permanent upload selected, ensure user is logged in
-    if (isPermanent && !currentUser) {
+    if (isPermanent && !isUserLoggedIn()) {
       showAuthModal("signin");
       toast("Please sign in or create an account to unlock permanent storage.");
       return;
@@ -1698,11 +1906,11 @@
     if (card48) card48.addEventListener("click", () => setExpiryCardActive(card48));
     if (cardPerm) {
       cardPerm.addEventListener("click", (e) => {
-        if (!currentUser) {
+        if (!isUserLoggedIn()) {
           e.preventDefault();
           hideShareModal();
           showAuthModal("signin");
-          toast("Sign in or create an account to unlock permanent cloud storage.");
+          toast("Please sign in or create an account to unlock permanent cloud storage.");
           return;
         }
         setExpiryCardActive(cardPerm);
