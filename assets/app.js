@@ -801,18 +801,76 @@
   /* ----------------------------------------------------
      Enhance Content (Mermaid & Code Blocks & Tables)
   ---------------------------------------------------- */
+  function detectDiagramTag(rawCode) {
+    const trimmed = (rawCode || "").trim();
+    if (/^\s*sequenceDiagram\b/m.test(trimmed)) return "SEQUENCE DIAGRAM";
+    if (/^\s*stateDiagram(?:-v2)?\b/m.test(trimmed)) return "STATE DIAGRAM";
+    if (/^\s*erDiagram\b/m.test(trimmed)) return "ENTITY RELATIONSHIP DIAGRAM";
+    if (/^\s*classDiagram\b/m.test(trimmed)) return "CLASS DIAGRAM";
+    if (/^\s*gantt\b/m.test(trimmed)) return "GANTT CHART";
+    if (/^\s*pie\b/m.test(trimmed)) return "PIE CHART";
+    if (/^\s*mindmap\b/m.test(trimmed)) return "MINDMAP";
+    if (/^\s*gitGraph\b/m.test(trimmed)) return "GIT GRAPH";
+    return "ARCHITECTURE DIAGRAM";
+  }
+
+  function sanitizeMermaidSource(rawText) {
+    if (!rawText) return "";
+    let text = rawText.trim();
+
+    // 1. Sequence diagrams syntax healing
+    if (/^\s*sequenceDiagram\b/m.test(text)) {
+      // Loop is a reserved keyword in Mermaid sequenceDiagram (for loop block)
+      text = text.replace(/(\b(?:participant|actor)\s+)Loop(\s+as\b)/gi, '$1AgentLoop$2');
+      text = text.replace(/(->>|-->>|->|-->)Loop\b/gi, '$1AgentLoop');
+      text = text.replace(/\bLoop(->>|-->>|->|-->)/gi, 'AgentLoop$1');
+      text = text.replace(/(\bactivate\s+)Loop\b/gi, '$1AgentLoop');
+      text = text.replace(/(\bdeactivate\s+)Loop\b/gi, '$1AgentLoop');
+
+      // Sanitize message lines after arrow/colon
+      const lines = text.split('\n');
+      text = lines.map(line => {
+        const colonIdx = line.indexOf(':');
+        const arrowMatch = line.match(/(-->>|->>|-->|->)/);
+        if (colonIdx !== -1 && arrowMatch && colonIdx > arrowMatch.index) {
+          const prefix = line.substring(0, colonIdx + 1);
+          let msg = line.substring(colonIdx + 1);
+          // Semicolon in message breaks sequence statements
+          msg = msg.replace(/;/g, ',');
+          // Arrow inside message text
+          msg = msg.replace(/\s*->\s*/g, ' to ');
+          // Unquoted plus inside words
+          msg = msg.replace(/([a-zA-Z0-9_])\s*\+\s*([a-zA-Z0-9_])/g, '$1 and $2');
+          // Greater than / less than
+          msg = msg.replace(/>\s*(\d)/g, 'over $1');
+          msg = msg.replace(/<\s*(\d)/g, 'under $1');
+          return prefix + msg;
+        }
+        return line;
+      }).join('\n');
+    }
+
+    return text;
+  }
+
   async function enhanceContent() {
     // 1. Transform Mermaid code blocks into interactive cards
     article.querySelectorAll("pre > code.language-mermaid").forEach((code, idx) => {
+      const rawSource = code.textContent.trim();
+      const sanitized = sanitizeMermaidSource(rawSource);
+      const diagramTag = detectDiagramTag(rawSource);
+
       const wrapper = document.createElement("div");
       wrapper.className = "mermaid-wrap";
       wrapper.dataset.diagramId = `diagram-${idx}`;
+      wrapper.dataset.rawSource = rawSource;
+      wrapper.dataset.diagramTag = diagramTag;
 
       wrapper.innerHTML = `
         <div class="diagram-toolbar">
           <div class="diagram-info">
             <span class="diagram-dot"></span>
-            <span class="diagram-tag">ARCHITECTURE DIAGRAM</span>
+            <span class="diagram-tag">${diagramTag}</span>
           </div>
           <div class="diagram-actions">
             <button type="button" class="diagram-btn zoom-out-btn" title="Zoom out (–)" aria-label="Zoom out">－</button>
@@ -822,12 +880,18 @@
             <button type="button" class="diagram-btn fullscreen-btn" title="Expand Fullscreen" aria-label="Fullscreen view">⤢ Fullscreen</button>
           </div>
         </div>
-        <div class="mermaid-viewport" role="region" aria-label="Architecture Diagram: Click to expand, use controls to zoom">
+        <div class="mermaid-viewport" role="region" aria-label="${diagramTag}: Click to expand, use controls to zoom">
           <div class="mermaid-canvas">
-            <div class="mermaid">${code.textContent}</div>
+            <div class="mermaid"></div>
           </div>
         </div>
       `;
+
+      // Set textContent directly into .mermaid (never via innerHTML)
+      const mermaidDiv = wrapper.querySelector(".mermaid");
+      if (mermaidDiv) {
+        mermaidDiv.textContent = sanitized;
+      }
 
       code.parentElement.replaceWith(wrapper);
     });
@@ -899,29 +963,59 @@
       try {
         await window.mermaid.run({ nodes: [...article.querySelectorAll(".mermaid")] });
       } catch (error) {
-        article.querySelectorAll(".mermaid").forEach(node => {
-          if (!node.querySelector("svg")) {
-            const msg = document.createElement("div");
-            msg.className = "diagram-error";
-            msg.textContent = "This Mermaid diagram could not be rendered. The original source is preserved in the Markdown file.";
-            node.replaceWith(msg);
-          }
-        });
-        console.warn("Mermaid rendering issue", error);
+        console.warn("Mermaid rendering issue:", error);
       }
 
-      // Attach pan & zoom and fullscreen trigger to each diagram card
+      // Attach pan & zoom or display clean syntax error card
       article.querySelectorAll(".mermaid-wrap").forEach(wrap => {
-        const viewport = wrap.querySelector(".mermaid-viewport");
         const canvas = wrap.querySelector(".mermaid-canvas");
+        const svg = canvas ? canvas.querySelector("svg") : null;
+        const rawSource = wrap.dataset.rawSource || "";
+
+        // Check if Mermaid rendered an error SVG or failed
+        const isError = !svg ||
+          svg.classList.contains("error-icon") ||
+          svg.querySelector(".error-icon") ||
+          (svg.textContent && svg.textContent.includes("Syntax error in text"));
+
+        if (isError) {
+          const actions = wrap.querySelector(".diagram-actions");
+          if (actions) actions.style.display = "none";
+          const tag = wrap.querySelector(".diagram-tag");
+          if (tag) {
+            tag.textContent = "SYNTAX NOTICE";
+            tag.style.color = "#dc2626";
+          }
+          const dot = wrap.querySelector(".diagram-dot");
+          if (dot) dot.style.background = "#ef4444";
+
+          if (canvas) {
+            canvas.innerHTML = `
+              <div class="diagram-error-card">
+                <div class="diagram-error-icon">⚠️</div>
+                <div class="diagram-error-content">
+                  <h4>Diagram Syntax Error</h4>
+                  <p>This diagram has a syntax error in the source Markdown and could not be rendered by Mermaid.</p>
+                  <details class="diagram-source-details">
+                    <summary>View Raw Mermaid Source</summary>
+                    <pre><code class="language-mermaid"></code></pre>
+                  </details>
+                </div>
+              </div>
+            `;
+            const codeEl = canvas.querySelector("code");
+            if (codeEl) codeEl.textContent = rawSource;
+          }
+          return;
+        }
+
+        const viewport = wrap.querySelector(".mermaid-viewport");
         const zoomLabel = wrap.querySelector("[data-zoom-label]");
         const zoomInBtn = wrap.querySelector(".zoom-in-btn");
         const zoomOutBtn = wrap.querySelector(".zoom-out-btn");
         const zoomResetBtn = wrap.querySelector(".zoom-reset-btn");
         const fullscreenBtn = wrap.querySelector(".fullscreen-btn");
-        const svg = canvas ? canvas.querySelector("svg") : null;
-
-        if (!viewport || !canvas || !svg) return;
+        const diagramTag = wrap.dataset.diagramTag || "Architecture Diagram";
 
         const controller = makePanZoom(viewport, canvas, (scale) => {
           if (zoomLabel) zoomLabel.textContent = `${Math.round(scale * 100)}%`;
@@ -931,7 +1025,7 @@
         if (zoomOutBtn) zoomOutBtn.onclick = () => controller.zoomOut();
         if (zoomResetBtn) zoomResetBtn.onclick = () => controller.reset();
 
-        const openFullscreen = () => openDiagramModal(svg, "Architecture Diagram");
+        const openFullscreen = () => openDiagramModal(svg, diagramTag);
         if (fullscreenBtn) fullscreenBtn.onclick = openFullscreen;
 
         // Clicking the diagram when unzoomed opens Fullscreen viewer
