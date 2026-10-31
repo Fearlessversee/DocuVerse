@@ -49,6 +49,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 *:focus {
   outline: none;
 }
@@ -2578,6 +2582,10 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+.auth-form[hidden] {
+  display: none !important;
 }
 
 .form-group {
