@@ -12,6 +12,7 @@ export default async function handler(req, res) {
   const projectId = "6ae0606a00131d3f9e1e";
   const databaseId = "docuverse_db";
   const collectionId = "documents";
+  const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024; // 2 MB limit
 
   // PATCH / PUT: Update existing shared document in-place (keeps URL unchanged)
   if (req.method === "PATCH" || req.method === "PUT") {
@@ -20,6 +21,11 @@ export default async function handler(req, res) {
       const docId = payload.documentId || payload.id || (req.query && (req.query.id || req.query.s));
       if (!docId) {
         return res.status(400).json({ message: "Missing documentId parameter for update" });
+      }
+
+      const content = payload?.data?.content || payload?.content;
+      if (content && content.length > MAX_DOCUMENT_SIZE) {
+        return res.status(413).json({ message: "Document size exceeds the 2 MB upload limit." });
       }
 
       // Appwrite REST PATCH expects { data: { ... } }
@@ -44,6 +50,10 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const content = payload?.data?.content || payload?.content;
+      if (content && content.length > MAX_DOCUMENT_SIZE) {
+        return res.status(413).json({ message: "Document size exceeds the 2 MB upload limit." });
+      }
       const appwriteRes = await fetch(`${endpoint}/databases/${databaseId}/collections/${collectionId}/documents`, {
         method: "POST",
         headers: {

@@ -12,6 +12,20 @@
   ];
 
   /* ----------------------------------------------------
+     Upload Limit Configuration
+  ---------------------------------------------------- */
+  const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB upload limit
+  const MAX_UPLOAD_SIZE_LABEL = "2 MB";
+
+  function formatFileSize(bytes) {
+    if (!bytes || bytes < 0) return "0 B";
+    if (bytes >= 1024 * 1024) {
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+    return Math.max(1, Math.round(bytes / 1024)) + " KB";
+  }
+
+  /* ----------------------------------------------------
      Local Database Layer (Persistent Document Storage)
   ---------------------------------------------------- */
   const STORAGE_KEY_DOCS = "docuverse_uploaded_docs_v1";
@@ -128,6 +142,11 @@
   // Unified file processor for uploads, drag-and-drop, and OS file opening
   async function processUploadedFile(file, text) {
     if (!file || typeof text !== "string") return;
+    const textSize = new Blob([text]).size;
+    if (textSize > MAX_UPLOAD_SIZE_BYTES || (file.size && file.size > MAX_UPLOAD_SIZE_BYTES)) {
+      toast(`File too large (${formatFileSize(file.size || textSize)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+      return;
+    }
     const cleanName = file.name || "document.md";
     const cleanTitle = cleanName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
 
@@ -1438,6 +1457,12 @@
     try {
       const resolved = resolveMarkdownUrl(targetUrl);
       const text = await fetchMarkdownWithFallback(resolved);
+      const textSize = new Blob([text]).size;
+      if (textSize > MAX_UPLOAD_SIZE_BYTES) {
+        article.innerHTML = `<div class="loading-state"><p>Document too large: <code>${formatFileSize(textSize)}</code> exceeds ${MAX_UPLOAD_SIZE_LABEL} limit.</p></div>`;
+        toast(`Remote document exceeds the ${MAX_UPLOAD_SIZE_LABEL} limit.`, 5000);
+        return;
+      }
       const filename = resolved.split("/").pop().split("?")[0] || "document.md";
       const title = displayTitle || filename.replace(/[-_]/g, " ").replace(/\.md$/i, "");
       await renderCustomMarkdown(text, title, filename);
@@ -2117,6 +2142,11 @@
       localFilePicker.addEventListener("change", (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
+        if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+          toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+          localFilePicker.value = "";
+          return;
+        }
         const reader = new FileReader();
         reader.onload = async (event) => {
           const text = event.target.result;
@@ -2149,6 +2179,11 @@
       renderPastedBtn.addEventListener("click", async () => {
         const text = pasteInput.value.trim();
         if (!text) return;
+        const textSize = new Blob([text]).size;
+        if (textSize > MAX_UPLOAD_SIZE_BYTES) {
+          toast(`Pasted text exceeds the ${MAX_UPLOAD_SIZE_LABEL} limit (${formatFileSize(textSize)}).`, 5000);
+          return;
+        }
         hideModal();
         const savedDoc = saveUploadedDoc("Pasted Document", "pasted-document.md", text);
         await loadCustomUploadedDoc(savedDoc, true);
@@ -2560,6 +2595,10 @@
         try {
           const fileHandle = launchParams.files[0];
           const file = await fileHandle.getFile();
+          if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+            toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+            return;
+          }
           const text = await file.text();
           await processUploadedFile(file, text);
         } catch (err) {
@@ -2581,6 +2620,10 @@
       const ext = file.name.split(".").pop().toLowerCase();
       if (!["md", "markdown", "mdown", "txt"].includes(ext)) return;
       e.preventDefault();
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+        return;
+      }
       try {
         const text = await file.text();
         await processUploadedFile(file, text);
