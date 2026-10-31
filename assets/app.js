@@ -1310,13 +1310,25 @@
   let appwriteAccount = null;
   let currentUser = null;
 
+  let hasPingedAppwrite = false;
+
   function initAppwriteAuth() {
     if (typeof window.Appwrite !== "undefined" && window.Appwrite.Client) {
       try {
-        appwriteClient = new window.Appwrite.Client()
-          .setEndpoint(APPWRITE_CONFIG.endpoint)
-          .setProject(APPWRITE_CONFIG.projectId);
-        appwriteAccount = new window.Appwrite.Account(appwriteClient);
+        if (!appwriteClient) {
+          appwriteClient = new window.Appwrite.Client()
+            .setEndpoint(APPWRITE_CONFIG.endpoint)
+            .setProject(APPWRITE_CONFIG.projectId);
+          appwriteAccount = new window.Appwrite.Account(appwriteClient);
+        }
+
+        // Run client.ping() once when the app starts so setup is confirmed
+        if (!hasPingedAppwrite && typeof appwriteClient.ping === "function") {
+          hasPingedAppwrite = true;
+          appwriteClient.ping()
+            .then(res => console.log("Appwrite ping response:", res))
+            .catch(err => console.warn("Appwrite ping notice:", err));
+        }
       } catch (err) {
         console.warn("DocuVerse Appwrite SDK init error:", err);
       }
@@ -1503,18 +1515,31 @@
   }
 
   async function loadFromAppwriteCloud(shareId) {
-    article.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Fetching shared document from Appwrite Cloud…</p></div>';
+    article.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Fetching shared document from Cloud…</p></div>';
     try {
-      const url = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents/${encodeURIComponent(shareId)}`;
-      const res = await fetch(url, {
-        headers: {
-          "X-Appwrite-Project": APPWRITE_CONFIG.projectId
+      let data = null;
+
+      // 1. Try local serverless API endpoint first (/api/share?s=)
+      try {
+        const proxyRes = await fetch(`/api/share?s=${encodeURIComponent(shareId)}`);
+        if (proxyRes.ok) {
+          data = await proxyRes.json();
         }
-      });
-      if (!res.ok) {
-        throw new Error(`Cloud document not found or expired (HTTP ${res.status})`);
+      } catch (_) {}
+
+      // 2. Direct Appwrite fetch fallback
+      if (!data || !data.content) {
+        const url = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents/${encodeURIComponent(shareId)}`;
+        const res = await fetch(url, {
+          headers: {
+            "X-Appwrite-Project": APPWRITE_CONFIG.projectId
+          }
+        });
+        if (!res.ok) {
+          throw new Error(`Cloud document not found or expired (HTTP ${res.status})`);
+        }
+        data = await res.json();
       }
-      const data = await res.json();
       const now = Date.now();
 
       // Check auto-delete / expiration timer (Only for temporary documents)
@@ -1612,8 +1637,8 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    // 2. Appwrite Cloud Shared Doc (?share=)
-    const shareParam = params.get("share");
+    // 2. Appwrite Cloud Shared Doc (?s= or ?share=)
+    const shareParam = params.get("s") || params.get("share");
     if (shareParam) {
       await loadFromAppwriteCloud(shareParam);
       return;
@@ -1724,7 +1749,6 @@
 
     try {
       const expiresAt = isPermanent ? 0 : (Date.now() + (durationHours * 60 * 60 * 1000));
-      const uploadUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents`;
 
       const payloadData = {
         title: activeDoc.title || "Shared Document",
@@ -1737,24 +1761,45 @@
         userId: currentUser ? currentUser.$id : null
       };
 
-      const res = await fetch(uploadUrl, {
-        method: "POST",
-        headers: {
-          "X-Appwrite-Project": APPWRITE_CONFIG.projectId,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          documentId: "unique()",
-          data: payloadData
-        })
-      });
+      let cloudDoc = null;
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || `Appwrite Error ${res.status}`);
+      // 1. Try local serverless endpoint (/api/share) first (bypasses browser CORS)
+      try {
+        const proxyRes = await fetch("/api/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: "unique()",
+            data: payloadData
+          })
+        });
+        if (proxyRes.ok) {
+          cloudDoc = await proxyRes.json();
+        }
+      } catch (_) {}
+
+      // 2. Direct Appwrite REST API fallback
+      if (!cloudDoc || !cloudDoc.$id) {
+        const uploadUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents`;
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            "X-Appwrite-Project": APPWRITE_CONFIG.projectId,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            documentId: "unique()",
+            data: payloadData
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Appwrite Error ${res.status}`);
+        }
+        cloudDoc = await res.json();
       }
 
-      const cloudDoc = await res.json();
       const cloudId = cloudDoc.$id;
 
       // Update local doc properties
@@ -1774,15 +1819,18 @@
       }
 
       drawDocumentList();
-      const url = `${location.origin}${location.pathname}?share=${encodeURIComponent(cloudId)}`;
-      history.replaceState({}, "", `?share=${encodeURIComponent(cloudId)}`);
+      const shortUrl = `${location.origin}${location.pathname}?s=${encodeURIComponent(cloudId)}`;
+      history.replaceState({}, "", `?s=${encodeURIComponent(cloudId)}`);
 
       const successToast = isPermanent
-        ? "Saved permanently to Appwrite Cloud & link copied!"
-        : `Saved to Appwrite Cloud (Auto-deletes in ${durationHours}h) & link copied!`;
-      await copyToClipboard(url, successToast);
+        ? "Saved permanently to Cloud & short link copied!"
+        : `Saved to Cloud (Auto-deletes in ${durationHours}h) & short link copied!`;
+      await copyToClipboard(shortUrl, successToast);
     } catch (err) {
-      console.warn("Appwrite upload failed, fallback to hash:", err);
+      console.warn("Cloud save issue:", err);
+      if (err.message && err.message.toLowerCase().includes("invalid origin")) {
+        toast("Notice: Add 'docuversee.vercel.app' in Appwrite Console > Platforms > Web App.", 6000);
+      }
       if (currentMarkdown.length < 8000) {
         const encoded = encodeHashData(currentMarkdown);
         const url = `${location.origin}${location.pathname}#data=${encoded}`;
@@ -1810,9 +1858,9 @@
       if (activeDoc.cloudId) {
         const isStillValid = activeDoc.isPermanent || (activeDoc.expiresAt && activeDoc.expiresAt > Date.now());
         if (isStillValid) {
-          url = `${location.origin}${location.pathname}?share=${encodeURIComponent(activeDoc.cloudId)}`;
+          url = `${location.origin}${location.pathname}?s=${encodeURIComponent(activeDoc.cloudId)}`;
           const expiryInfo = activeDoc.isPermanent ? "(Permanent)" : `(Expires in ~${Math.max(1, Math.round((activeDoc.expiresAt - Date.now()) / 3600000))}h)`;
-          await copyToClipboard(url, `Cloud share link copied! ${expiryInfo}`);
+          await copyToClipboard(url, `Short cloud link copied! ${expiryInfo}`);
           return;
         }
       }
@@ -2465,6 +2513,8 @@
     enforceLightTheme();
     setupPwa();
     setupOpenModal();
+    initAppwriteAuth();
+    await checkUserSession();
     await routeAndLoad();
   });
 })();

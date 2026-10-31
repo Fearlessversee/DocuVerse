@@ -1,0 +1,27 @@
+{
+  "name": "docuverse",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "sw.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/virajverse/DocuVerse.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/virajverse/DocuVerse/issues"
+  },
+  "homepage": "https://github.com/virajverse/DocuVerse#readme",
+  "dependencies": {
+    "appwrite": "^29.2.0"
+  }
+}
