@@ -12,6 +12,20 @@
   ];
 
   /* ----------------------------------------------------
+     Upload Limit Configuration
+  ---------------------------------------------------- */
+  const MAX_UPLOAD_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB upload limit
+  const MAX_UPLOAD_SIZE_LABEL = "2 MB";
+
+  function formatFileSize(bytes) {
+    if (!bytes || bytes < 0) return "0 B";
+    if (bytes >= 1024 * 1024) {
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+    return Math.max(1, Math.round(bytes / 1024)) + " KB";
+  }
+
+  /* ----------------------------------------------------
      Local Database Layer (Persistent Document Storage)
   ---------------------------------------------------- */
   const STORAGE_KEY_DOCS = "docuverse_uploaded_docs_v1";
@@ -50,34 +64,180 @@
     }
   }
 
+  // In-place Cloud Document Updater (preserves share URL / document ID)
+  async function updateCloudDocument(cloudId, data) {
+    if (!cloudId) return null;
+    try {
+      // 1. Try local serverless endpoint (/api/share) first (bypasses browser CORS)
+      try {
+        const proxyRes = await fetch("/api/share", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: cloudId,
+            data: data
+          })
+        });
+        if (proxyRes.ok) {
+          return await proxyRes.json();
+        }
+      } catch (_) {}
+
+      // 2. Direct Appwrite REST API fallback
+      const patchUrl = `${APPWRITE_CONFIG.endpoint}/databases/${APPWRITE_CONFIG.databaseId}/collections/${APPWRITE_CONFIG.collectionId}/documents/${encodeURIComponent(cloudId)}`;
+      const res = await fetch(patchUrl, {
+        method: "PATCH",
+        headers: {
+          "X-Appwrite-Project": APPWRITE_CONFIG.projectId,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ data: data })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn("DocuVerse updateCloudDocument error:", err);
+    }
+    return null;
+  }
+
   function saveUploadedDoc(title, filename, content) {
     const docs = getUploadedDocs();
     const cleanName = filename || "document.md";
     const cleanTitle = title || cleanName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-    const id = "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
 
-    const newDoc = {
-      id,
-      title: cleanTitle,
-      filename: cleanName,
-      content,
-      createdAt: Date.now(),
-      size: content.length,
-      isUploaded: true,
-      cloudId: null
-    };
+    const existingIndex = docs.findIndex(d => 
+      (d.filename && d.filename.toLowerCase() === cleanName.toLowerCase()) ||
+      (d.title && cleanTitle && d.title.toLowerCase() === cleanTitle.toLowerCase())
+    );
 
-    const existingIndex = docs.findIndex(d => d.filename === cleanName && d.title === cleanTitle);
     if (existingIndex >= 0) {
       docs[existingIndex].content = content;
-      docs[existingIndex].createdAt = Date.now();
       docs[existingIndex].size = content.length;
+      docs[existingIndex].title = cleanTitle;
+      docs[existingIndex].filename = cleanName;
+      docs[existingIndex].updatedAt = Date.now();
+      docs[existingIndex].isUpdatedInPlace = true;
       persistUploadedDocs(docs);
       return docs[existingIndex];
     } else {
+      const id = "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      const newDoc = {
+        id,
+        title: cleanTitle,
+        filename: cleanName,
+        content,
+        createdAt: Date.now(),
+        size: content.length,
+        isUploaded: true,
+        cloudId: null
+      };
       docs.unshift(newDoc);
       persistUploadedDocs(docs);
       return newDoc;
+    }
+  }
+
+  // Unified file processor for uploads, drag-and-drop, and OS file opening
+  async function processUploadedFile(file, text) {
+    if (!file || typeof text !== "string") return;
+    const textSize = new Blob([text]).size;
+    if (textSize > MAX_UPLOAD_SIZE_BYTES || (file.size && file.size > MAX_UPLOAD_SIZE_BYTES)) {
+      toast(`File too large (${formatFileSize(file.size || textSize)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+      return;
+    }
+    const cleanName = file.name || "document.md";
+    const cleanTitle = cleanName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+
+    const docs = getUploadedDocs();
+    const existingIndex = docs.findIndex(d => 
+      (d.filename && d.filename.toLowerCase() === cleanName.toLowerCase()) ||
+      (d.title && d.title.toLowerCase() === cleanTitle.toLowerCase())
+    );
+
+    let docToLoad = null;
+    let isCloudUpdated = false;
+
+    if (existingIndex >= 0) {
+      const existing = docs[existingIndex];
+      existing.content = text;
+      existing.size = text.length;
+      existing.title = cleanTitle;
+      existing.filename = cleanName;
+      existing.updatedAt = Date.now();
+
+      // Check if existing document or activeDoc was already synced to cloud
+      const targetCloudId = existing.cloudId || (
+        activeDoc && activeDoc.cloudId && 
+        (activeDoc.file?.toLowerCase() === cleanName.toLowerCase() || activeDoc.filename?.toLowerCase() === cleanName.toLowerCase())
+          ? activeDoc.cloudId
+          : null
+      );
+
+      if (targetCloudId) {
+        existing.cloudId = targetCloudId;
+        persistUploadedDocs(docs);
+        toast(`Syncing '${cleanName}' to Cloud without changing URL...`);
+        const updateRes = await updateCloudDocument(targetCloudId, {
+          title: cleanTitle,
+          filename: cleanName,
+          content: text,
+          size: text.length
+        });
+        if (updateRes && (updateRes.$id || updateRes.title)) {
+          isCloudUpdated = true;
+        }
+      } else {
+        persistUploadedDocs(docs);
+      }
+
+      docToLoad = existing;
+    } else {
+      let activeCloudId = null;
+      if (activeDoc && activeDoc.cloudId && 
+          (activeDoc.file?.toLowerCase() === cleanName.toLowerCase() || activeDoc.filename?.toLowerCase() === cleanName.toLowerCase())) {
+        activeCloudId = activeDoc.cloudId;
+      }
+
+      const id = "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      const newDoc = {
+        id,
+        title: cleanTitle,
+        filename: cleanName,
+        content: text,
+        createdAt: Date.now(),
+        size: text.length,
+        isUploaded: true,
+        cloudId: activeCloudId
+      };
+
+      if (activeCloudId) {
+        toast(`Syncing '${cleanName}' to Cloud without changing URL...`);
+        const updateRes = await updateCloudDocument(activeCloudId, {
+          title: cleanTitle,
+          filename: cleanName,
+          content: text,
+          size: text.length
+        });
+        if (updateRes && (updateRes.$id || updateRes.title)) {
+          isCloudUpdated = true;
+        }
+      }
+
+      docs.unshift(newDoc);
+      persistUploadedDocs(docs);
+      docToLoad = newDoc;
+    }
+
+    await loadCustomUploadedDoc(docToLoad, true);
+
+    if (isCloudUpdated) {
+      toast(`Updated '${cleanName}' in-place! Cloud share URL kept unchanged.`);
+    } else if (existingIndex >= 0) {
+      toast(`Updated existing file '${cleanName}' in Library!`);
+    } else {
+      toast(`Uploaded & saved to Library: ${docToLoad.title}`);
     }
   }
 
@@ -1213,7 +1373,11 @@
     } catch (_) {}
 
     if (changeHistory) {
-      history.pushState({}, "", "?doc=" + encodeURIComponent(doc.id));
+      if (doc.cloudId) {
+        history.pushState({}, "", "?s=" + encodeURIComponent(doc.cloudId));
+      } else {
+        history.pushState({}, "", "?doc=" + encodeURIComponent(doc.id));
+      }
     }
   }
 
@@ -1293,6 +1457,12 @@
     try {
       const resolved = resolveMarkdownUrl(targetUrl);
       const text = await fetchMarkdownWithFallback(resolved);
+      const textSize = new Blob([text]).size;
+      if (textSize > MAX_UPLOAD_SIZE_BYTES) {
+        article.innerHTML = `<div class="loading-state"><p>Document too large: <code>${formatFileSize(textSize)}</code> exceeds ${MAX_UPLOAD_SIZE_LABEL} limit.</p></div>`;
+        toast(`Remote document exceeds the ${MAX_UPLOAD_SIZE_LABEL} limit.`, 5000);
+        return;
+      }
       const filename = resolved.split("/").pop().split("?")[0] || "document.md";
       const title = displayTitle || filename.replace(/[-_]/g, " ").replace(/\.md$/i, "");
       await renderCustomMarkdown(text, title, filename);
@@ -1763,6 +1933,11 @@
 
       let cloudDoc = null;
 
+      // In-place cloud update if document is already shared
+      if (activeDoc && activeDoc.cloudId) {
+        cloudDoc = await updateCloudDocument(activeDoc.cloudId, payloadData);
+      }
+
       // 1. Try local serverless endpoint (/api/share) first (bypasses browser CORS)
       try {
         const proxyRes = await fetch("/api/share", {
@@ -1967,14 +2142,16 @@
       localFilePicker.addEventListener("change", (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
+        if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+          toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+          localFilePicker.value = "";
+          return;
+        }
         const reader = new FileReader();
         reader.onload = async (event) => {
           const text = event.target.result;
           hideModal();
-          const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-          const savedDoc = saveUploadedDoc(cleanTitle, file.name, text);
-          await loadCustomUploadedDoc(savedDoc, true);
-          toast("Uploaded & saved to Library: " + savedDoc.title);
+          await processUploadedFile(file, text);
         };
         reader.onerror = () => {
           toast("Failed to read local file.");
@@ -2002,6 +2179,11 @@
       renderPastedBtn.addEventListener("click", async () => {
         const text = pasteInput.value.trim();
         if (!text) return;
+        const textSize = new Blob([text]).size;
+        if (textSize > MAX_UPLOAD_SIZE_BYTES) {
+          toast(`Pasted text exceeds the ${MAX_UPLOAD_SIZE_LABEL} limit (${formatFileSize(textSize)}).`, 5000);
+          return;
+        }
         hideModal();
         const savedDoc = saveUploadedDoc("Pasted Document", "pasted-document.md", text);
         await loadCustomUploadedDoc(savedDoc, true);
@@ -2413,16 +2595,43 @@
         try {
           const fileHandle = launchParams.files[0];
           const file = await fileHandle.getFile();
+          if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+            toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+            return;
+          }
           const text = await file.text();
-          const cleanTitle = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-          const savedDoc = saveUploadedDoc(cleanTitle, file.name, text);
-          await loadCustomUploadedDoc(savedDoc, true);
-          toast("Opened & saved: " + file.name);
+          await processUploadedFile(file, text);
         } catch (err) {
           console.warn("DocuVerse file handler error:", err);
         }
       });
     }
+    // Drag & Drop .md file support anywhere on the page
+    window.addEventListener("dragover", (e) => {
+      if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }
+    });
+
+    window.addEventListener("drop", async (e) => {
+      if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+      const file = e.dataTransfer.files[0];
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!["md", "markdown", "mdown", "txt"].includes(ext)) return;
+      e.preventDefault();
+      if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+        toast(`File too large (${formatFileSize(file.size)})! Maximum upload limit is ${MAX_UPLOAD_SIZE_LABEL}.`, 5000);
+        return;
+      }
+      try {
+        const text = await file.text();
+        await processUploadedFile(file, text);
+      } catch (err) {
+        console.warn("DocuVerse drop file error:", err);
+      }
+    });
+
   }
 
   

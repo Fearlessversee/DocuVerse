@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   // CORS Headers for browser calls
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Appwrite-Project");
 
   if (req.method === "OPTIONS") {
@@ -12,11 +12,48 @@ export default async function handler(req, res) {
   const projectId = "6ae0606a00131d3f9e1e";
   const databaseId = "docuverse_db";
   const collectionId = "documents";
+  const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024; // 2 MB limit
 
-  // POST: Save shared document to cloud
+  // PATCH / PUT: Update existing shared document in-place (keeps URL unchanged)
+  if (req.method === "PATCH" || req.method === "PUT") {
+    try {
+      const payload = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+      const docId = payload.documentId || payload.id || (req.query && (req.query.id || req.query.s));
+      if (!docId) {
+        return res.status(400).json({ message: "Missing documentId parameter for update" });
+      }
+
+      const content = payload?.data?.content || payload?.content;
+      if (content && content.length > MAX_DOCUMENT_SIZE) {
+        return res.status(413).json({ message: "Document size exceeds the 2 MB upload limit." });
+      }
+
+      // Appwrite REST PATCH expects { data: { ... } }
+      const bodyPayload = payload.data ? { data: payload.data } : { data: payload };
+
+      const appwriteRes = await fetch(`${endpoint}/databases/${databaseId}/collections/${collectionId}/documents/${encodeURIComponent(docId)}`, {
+        method: "PATCH",
+        headers: {
+          "X-Appwrite-Project": projectId,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+      const data = await appwriteRes.json();
+      return res.status(appwriteRes.status).json(data);
+    } catch (err) {
+      return res.status(500).json({ message: err.message || "Failed to update document in cloud" });
+    }
+  }
+
+  // POST: Save new shared document to cloud
   if (req.method === "POST") {
     try {
       const payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      const content = payload?.data?.content || payload?.content;
+      if (content && content.length > MAX_DOCUMENT_SIZE) {
+        return res.status(413).json({ message: "Document size exceeds the 2 MB upload limit." });
+      }
       const appwriteRes = await fetch(`${endpoint}/databases/${databaseId}/collections/${collectionId}/documents`, {
         method: "POST",
         headers: {
