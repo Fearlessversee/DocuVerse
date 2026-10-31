@@ -1310,13 +1310,25 @@
   let appwriteAccount = null;
   let currentUser = null;
 
+  let hasPingedAppwrite = false;
+
   function initAppwriteAuth() {
     if (typeof window.Appwrite !== "undefined" && window.Appwrite.Client) {
       try {
-        appwriteClient = new window.Appwrite.Client()
-          .setEndpoint(APPWRITE_CONFIG.endpoint)
-          .setProject(APPWRITE_CONFIG.projectId);
-        appwriteAccount = new window.Appwrite.Account(appwriteClient);
+        if (!appwriteClient) {
+          appwriteClient = new window.Appwrite.Client()
+            .setEndpoint(APPWRITE_CONFIG.endpoint)
+            .setProject(APPWRITE_CONFIG.projectId);
+          appwriteAccount = new window.Appwrite.Account(appwriteClient);
+        }
+
+        // Run client.ping() once when the app starts so setup is confirmed
+        if (!hasPingedAppwrite && typeof appwriteClient.ping === "function") {
+          hasPingedAppwrite = true;
+          appwriteClient.ping()
+            .then(res => console.log("Appwrite ping response:", res))
+            .catch(err => console.warn("Appwrite ping notice:", err));
+        }
       } catch (err) {
         console.warn("DocuVerse Appwrite SDK init error:", err);
       }
@@ -2501,6 +2513,8 @@
     enforceLightTheme();
     setupPwa();
     setupOpenModal();
+    initAppwriteAuth();
+    await checkUserSession();
     await routeAndLoad();
   });
 })();
