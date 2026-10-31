@@ -1010,6 +1010,38 @@
       }).join('\n');
     }
 
+    // 2. Mermaid v11 Markdown Node Label Healing ("Unsupported markdown: list / heading")
+    // In Mermaid 11+, any node label containing Markdown list syntax ('1. ', '- ', '* ')
+    // crashes the renderer into 'Unsupported markdown: list' because Mermaid's marked lexer
+    // creates block list tokens that its SVG node renderer does not support.
+    const sanitizeLabelContent = (content) => {
+      return content
+        // Numbered steps: 1. Step -> 1) Step (after start, newline, \n, <br>, backtick, quote, brackets, pipe)
+        .replace(/(^|\\n|[\r\n`>\[\({|]|<br\s*\/?>)\s*(\d+)\.\s+/gi, '$1$2) ')
+        // Bullet points: - Step or * Step or + Step -> • Step
+        .replace(/(^|\\n|[\r\n`>\[\({|]|<br\s*\/?>)\s*[-*+]\s+/gi, '$1• ')
+        // Markdown headings inside node labels: ## Title -> Title
+        .replace(/(^|\\n|[\r\n`>\[\({|]|<br\s*\/?>)\s*#{1,6}\s+/gi, '$1');
+    };
+
+    // A. Quoted labels: ["..."], ("..."), {"..."}, (["..."]), [/"..."/], etc.
+    text = text.replace(/(["'`])([\s\S]*?)\1/g, (match, quote, content) => {
+      if (/(?:^|\\n|[\r\n`>\[\({|]|<br\s*\/?>)\s*(?:\d+\.|[-*+]|#{1,6})\s+/i.test(content)) {
+        return quote + sanitizeLabelContent(content) + quote;
+      }
+      return match;
+    });
+
+    // B. Pipe labels on transitions: |1. Transition|
+    text = text.replace(/(\|[^|\r\n]+\|)/g, (match) => {
+      return sanitizeLabelContent(match);
+    });
+
+    // C. Unquoted labels in brackets: [...], (...), {...}
+    text = text.replace(/(\[[^\[\]]+\]|\([^()]+\)|\{[^{}]+\})/g, (match) => {
+      return sanitizeLabelContent(match);
+    });
+
     return text;
   }
 
